@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -29,15 +30,17 @@
 #define NETWORKMANAGER_H
 
 #include <QtCore/QObject>
+#include <QNetworkRequest>
 
 class QNetworkAccessManager;
+//class QNetworkRequest;
 class QNetworkReply;
 class QUrl;
 
 /*! Wrapper for QNetworkAccessManager
 
     A wrapper for QNetworkAccessManager to provide easy-to-use create*Request()
-    functions for used by other class. Also responsible for tracking download counter.
+    functions for use by other classes. Also responsible for tracking download counter.
     Only a single global instance of NetworkManager should be created for each app session.
  */
 class NetworkManager : public QObject
@@ -55,6 +58,9 @@ public:
 
     /*! Create a GET network request. */
     QNetworkReply *createGetRequest(const QUrl &url, AcceptType acceptType = None);
+    /*! Create a GET network request. This is an overloaded function with the possibility
+        to pass a reference to a QNetworkRequest object. */
+    QNetworkReply *createGetRequest(QNetworkRequest &netRequest);
     /*! Create a POST network request. */
     QNetworkReply *createPostRequest(const QUrl &url, const QByteArray &data);
 

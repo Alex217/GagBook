@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -28,20 +29,36 @@
 #include "networkmanager.h"
 
 #include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkCookie>
 
 #include "gagcookiejar.h"
 
 static const QByteArray USER_AGENT = QByteArray("GagBook/") + APP_VERSION;
+/*
+// Note: QT 5.6 and SFOS 2.1.0.x introduced 'QNetworkRequest::FollowRedirectsAttribute'
+static bool checkForRedirection(QNetworkReply *reply)
+{
+    // check if a redirection occured
+    QVariant redirectUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+
+    // We're being redirected if the URL is not empty
+    if(!redirectUrl.toUrl().isEmpty()) {
+        qWarning("A HTTP redirection occured! Activate the option to follow redirects.");
+        qDebug() << "HTTP redirection occured to: " << redirectUrl.toString();
+        return true;
+    }
+    else
+        return false;
+}*/
 
 NetworkManager::NetworkManager(QObject *parent) :
     QObject(parent), m_networkAccessManager(new QNetworkAccessManager(this)),
     m_downloadCounter(0), m_downloadCounterStr("0.00")
 {
     m_networkAccessManager->setCookieJar(new GagCookieJar);
-    connect(m_networkAccessManager, SIGNAL(finished(QNetworkReply*)), SLOT(increaseDownloadCounter(QNetworkReply*)));
+    connect(m_networkAccessManager, SIGNAL(finished(QNetworkReply*)),
+            SLOT(increaseDownloadCounter(QNetworkReply*)));
 }
 
 QNetworkReply *NetworkManager::createGetRequest(const QUrl &url, AcceptType acceptType)
@@ -59,6 +76,17 @@ QNetworkReply *NetworkManager::createGetRequest(const QUrl &url, AcceptType acce
     }
 
     return m_networkAccessManager->get(request);
+}
+
+QNetworkReply *NetworkManager::createGetRequest(QNetworkRequest &netRequest)
+{
+    /*qDebug() << "Request HEADERS:";
+    foreach (QByteArray header, netRequest.rawHeaderList()) {
+        qDebug() << header << " - " << netRequest.rawHeader(header);
+    }*/
+
+    //netRequest.setRawHeader("User-Agent", USER_AGENT);
+    return m_networkAccessManager->get(netRequest);
 }
 
 QNetworkReply *NetworkManager::createPostRequest(const QUrl &url, const QByteArray &data)
