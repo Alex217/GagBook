@@ -66,8 +66,9 @@ class AppSettings : public QObject
     Q_PROPERTY(QStringList sections READ sections WRITE setSections NOTIFY sectionsChanged)
 public:
     enum Source {
-        NineGagSource, //!< Use 9GAG website scraping method (preferred). \sa NineGagRequest
-        InfiniGagSource //!< Use [InfiniGAG](https://github.com/k3min/infinigag) API. \sa InfiniGagRequest
+        NineGagApiSource, //!< Use undisclosed official 9GAG API to fetch JSON data. \sa NineGagApiRequest
+        //NineGagSource, //!< Use 9GAG website scraping method (preferred). \sa NineGagRequest
+        //InfiniGagSource //!< Use [InfiniGAG](https://github.com/k3min/infinigag) API. \sa InfiniGagRequest
     };
 
     explicit AppSettings(QObject *parent = 0);

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -35,6 +36,7 @@
 #include "networkmanager.h"
 #include "infinigagrequest.h"
 #include "ninegagrequest.h"
+#include "ninegagapirequest.h"
 #include "gagimagedownloader.h"
 
 GagModel::GagModel(QObject *parent) :
@@ -174,10 +176,14 @@ void GagModel::setSelectedSection(int selectedSection)
 
 void GagModel::refresh(RefreshType refreshType)
 {
-    if (m_request != 0) {
-        m_request->disconnect();
-        m_request->deleteLater();
-        m_request = 0;
+    if (m_busy != true) {
+        m_busy = true;
+        emit busyChanged();
+    }
+
+    if (m_progress != 0) {
+        m_progress = 0;
+        emit progressChanged();
     }
 
     if (m_imageDownloader != 0) {
@@ -186,18 +192,32 @@ void GagModel::refresh(RefreshType refreshType)
         m_imageDownloader = 0;
     }
 
-    const QString section = m_manager->settings()->sections().at(m_selectedSection);
+    if (refreshType == RefreshAll) {
 
-    switch (m_manager->settings()->source()) {
-    default:
-        qWarning("GagModel::refresh(): Invalid source, default source will be used");
-        // fallthrough
-    case AppSettings::NineGagSource:
-        m_request = new NineGagRequest(manager()->networkManager(), section, this);
-        break;
-    case AppSettings::InfiniGagSource:
-        m_request = new InfiniGagRequest(manager()->networkManager(), section, this);
-        break;
+        if (m_request != 0) {
+            m_request->disconnect();
+            m_request->deleteLater();
+            m_request = 0;
+        }
+
+        const QString section = m_manager->settings()->sections().at(m_selectedSection);
+
+        switch (m_manager->settings()->source()) {
+        default:
+            qWarning("GagModel::refresh(): Invalid source, default source will be used.");
+            // fallthrough
+        case AppSettings::NineGagApiSource:
+            m_request = new NineGagApiRequest(manager()->networkManager(), section, this);
+            break;
+        //case AppSettings::NineGagSource:
+            //m_request = new NineGagRequest(manager()->networkManager(), section, this);
+            //break;
+        //case AppSettings::InfiniGagSource:
+            //m_request = new InfiniGagRequest(manager()->networkManager(), section, this);
+            //break;
+        }
+
+        connect(m_request, SIGNAL(readyToRequest()), this, SLOT(startRequest()), Qt::UniqueConnection);
     }
 
     if (!m_gagList.isEmpty()) {
@@ -209,20 +229,8 @@ void GagModel::refresh(RefreshType refreshType)
             m_request->setLastId(m_gagList.last().id());
         }
     }
-    connect(m_request, SIGNAL(success(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)));
-    connect(m_request, SIGNAL(failure(QString)), this, SLOT(onFailure(QString)));
 
-    if (m_busy != true) {
-        m_busy = true;
-        emit busyChanged();
-    }
-
-    if (m_progress != 0) {
-        m_progress = 0;
-        emit progressChanged();
-    }
-
-    m_request->send();
+    m_request->initiateRequest();
 }
 
 void GagModel::stopRefresh()
@@ -290,22 +298,33 @@ void GagModel::changeLikes(const QString &id, int likes)
     }
 }
 
+void GagModel::startRequest()
+{
+    connect(m_request, SIGNAL(success(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)),
+            Qt::UniqueConnection);
+    connect(m_request, SIGNAL(failure(QString)), this, SLOT(onFailure(QString)), Qt::UniqueConnection);
+
+    m_request->send();
+}
+
 void GagModel::onSuccess(const QList<GagObject> &gagList)
 {
     m_imageDownloader = new GagImageDownloader(manager()->networkManager(), this);
     m_imageDownloader->setGagList(gagList);
     m_imageDownloader->setDownloadGIF(false);
-    connect(m_imageDownloader, SIGNAL(downloadProgress(qint64,qint64)), SLOT(onDownloadProgress(qint64,qint64)));
-    connect(m_imageDownloader, SIGNAL(finished()), SLOT(onDownloadFinished()));
+    connect(m_imageDownloader, SIGNAL(downloadProgress(qint64,qint64)), this,
+            SLOT(onDownloadProgress(qint64,qint64)), Qt::UniqueConnection);
+    connect(m_imageDownloader, SIGNAL(finished()), this,
+            SLOT(onDownloadFinished()), Qt::UniqueConnection);
     m_imageDownloader->start();
-
-    m_request->deleteLater();
-    m_request = 0;
 }
 
 void GagModel::onFailure(const QString &errorMessage)
 {
     emit refreshFailure(errorMessage);
+
+    Q_ASSERT(m_request != 0);
+    m_request->disconnect();
     m_request->deleteLater();
     m_request = 0;
 
@@ -342,6 +361,8 @@ void GagModel::onDownloadFinished()
         emit busyChanged();
     }
 
+    Q_ASSERT(m_imageDownloader != 0);
+    m_imageDownloader->disconnect();
     m_imageDownloader->deleteLater();
     m_imageDownloader = 0;
 }

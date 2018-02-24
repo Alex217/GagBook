@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -37,23 +38,26 @@
 class NetworkManager;
 class QNetworkReply;
 
-/*! Download list of gag
+/*! GagRequest downloads a list of gags.
 
-    A abstract class that encapsulate a request to download a list of gag. Can be
-    subclass to support different ways of getting gags.
+    An abstract class that encapsulates a request to download a list of gags. This can be
+    a subclass to support different ways of getting gags.
 
-    \sa NineGagRequest, InfiniGagRequest
+    \sa NineGagApiRequest, NineGagRequest
  */
 class GagRequest : public QObject
 {
     Q_OBJECT
 public:
-    /*! Constructor. \p section specify from which 9GAG section to get the gags, eg. hot, comic, etc. */
+    /*! Constructor. \p section Specifies from which 9GAG section to get the gags, eg. hot, comic, etc. */
     explicit GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
 
     /*! Set the id of the last gag in the list. If this is set, the gags retrieved are older than
         the last gag. */
     void setLastId(const QString &lastId);
+
+    /*! Initiates the request. */
+    void initiateRequest();
 
     /*! Send the request. */
     void send();
@@ -66,7 +70,17 @@ signals:
         of the failure and should be shown to user. */
     void failure(const QString &errorMessage);
 
+    /*! Emit to initiate/send the request.
+        \sa send, createRequest */
+    void readyToRequest();
+
 protected:
+    /*! Implement this to start/send the request by emitting the readyToRequest signal.
+     *  This function is useful if some preparation is needed prior to the request or to
+     *  achieve a specific state of the derived GagRequest object (e.g. a login).
+     *  \sa readyToRequest */
+    virtual void startRequest() = 0;
+
     /*! Implement this to make your own network request. \p section specify from which
         9GAG section to get the gags, eg. hot, comic, etc. \p lastId is id of the last
         gag, can be empty. */
@@ -83,10 +97,9 @@ private slots:
 
 private:
     NetworkManager *m_networkManager;
+    QNetworkReply *m_reply;
     const QString m_section;
     QString m_lastId;
-
-    QNetworkReply *m_reply;
     QList<GagObject> m_gagList;
 };
 

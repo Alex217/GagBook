@@ -3,9 +3,10 @@
   <img src="https://raw.githubusercontent.com/Alex217/GagBook/master/sailfish/harbour-gagbook.png" width="86px" height="86px" alt="GagBook">
   <br>
   <br>
+  GagBook
+  <br>
+  <br>
 </h1>
-
-# GagBook
 
 GagBook is an unofficial mobile app for the [9GAG](https://9gag.com) website, currently available
 for SailfishOS, MeeGo Harmattan and Symbian^3.
@@ -13,9 +14,8 @@ for SailfishOS, MeeGo Harmattan and Symbian^3.
 This is a fork of the original GagBook app initially developed by [@dicksonleong](https://github.com/dicksonleong) and later maintained by [@llelectronics](https://github.com/llelectronics).
 I intend to update this fork with bug fixes and new features.
 
-GagBook gets its data from 9GAG by scraping the website, or using [InfiniGAG](https://github.com/k3min/infinigag)
-API. This might be unethical but the app initially has been developed because there is no official 9GAG app for Sailfish OS, MeeGo Harmattan
-and Symbian^3 and 9GAG also does not provide an official API for developers.
+GagBook gets its data from the undisclosed official 9GAG API.
+The webscraping method using QtWebKitWidgets is deprecated after 9GAG changed its website to a JS rendered page back in December 2017.
 
 ## Features
 
@@ -48,3 +48,7 @@ GagBook uses the [Qt-Json library](https://github.com/ereilin/qt-json), which is
 under the Simplified BSD License, see the file "qt-json/LICENSE" for more info.
 
 [VideoComponent.qml](sailfish/qml/VideoComponent.qml) was implemented by [@llelectronics](https://github.com/llelectronics) and is licensed under GPLv3.
+
+## Credits
+
+Thanks to [@and3rson](https://github.com/and3rson) for his work on [nineapi](https://github.com/and3rson/nineapi).

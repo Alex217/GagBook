@@ -51,13 +51,15 @@ Page {
                 label: "Source"
                 currentIndex: appSettings.source
                 menu: ContextMenu {
-                    MenuItem { text: "9GAG" }
+                    MenuItem { text: "9GAG API" }
+                    //MenuItem { text: "9GAG website" }
                     //MenuItem { text: "InfiniGAG" }
                 }
                 onCurrentIndexChanged: {
                     switch (currentIndex) {
-                    case 0: appSettings.source = AppSettings.NineGagSource; break;
-                    case 1: appSettings.source = AppSettings.InfiniGagSource; break;
+                    case 0: appSettings.source = AppSettings.NineGagApiSource; break;
+                    //case 1: appSettings.source = AppSettings.NineGagSource; break;
+                    //case 2: appSettings.source = AppSettings.InfiniGagSource; break;
                     }
                 }
             }

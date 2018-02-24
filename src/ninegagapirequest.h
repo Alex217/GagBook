@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2018 Alexander Seibel.
- * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -26,61 +25,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef NINEGAGAPIREQUEST_H
+#define NINEGAGAPIREQUEST_H
+
 #include "gagrequest.h"
+#include "ninegagapiclient.h"
 
-#include <QtNetwork/QNetworkReply>
-
-#include "networkmanager.h"
-
-GagRequest::GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_reply(0), m_section(section)
+class NineGagApiRequest : public GagRequest
 {
-}
+    Q_OBJECT
 
-void GagRequest::setLastId(const QString &lastId)
-{
-    m_lastId = lastId;
-}
+public:
+    explicit NineGagApiRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
+    ~NineGagApiRequest();
 
-void GagRequest::initiateRequest()
-{
-    startRequest();
-}
+protected:
+    void startRequest();
+    QNetworkReply *createRequest(const QString &section, const QString &lastId);
+    QList<GagObject> parseResponse(const QByteArray &response);
 
-void GagRequest::send()
-{
-    Q_ASSERT(m_reply == 0);
+private slots:
+    void onLogin();
 
-    m_reply = createRequest(m_section, m_lastId);
-    // make sure the QNetworkReply will be destroyed when this object is destroyed
-    m_reply->setParent(this);
-    connect(m_reply, SIGNAL(finished()), this, SLOT(onFinished()), Qt::UniqueConnection);
-}
+private:
+    NineGagApiClient *m_apiClient;
+    bool loginOngoing;
+};
 
-void GagRequest::onFinished()
-{
-    if (m_reply->error()) {
-        qDebug() << "QNetworkReply error: " << m_reply->error() << "\nQNetworkReply object: " << m_reply->readAll();
-        emit failure(m_reply->errorString());
-        m_reply->disconnect();
-        m_reply->deleteLater();
-        m_reply = 0;
-        return;
-    }
-
-    QByteArray response = m_reply->readAll();
-    m_reply->disconnect();
-    m_reply->deleteLater();
-    m_reply = 0;
-
-    m_gagList = parseResponse(response);
-    if (m_gagList.isEmpty())
-        emit failure("Unable to parse response");
-    else
-        emit success(m_gagList);
-}
-
-NetworkManager *GagRequest::networkManager() const
-{
-    return m_networkManager;
-}
+#endif // NINEGAGAPIREQUEST_H

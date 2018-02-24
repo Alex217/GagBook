@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -134,6 +135,7 @@ signals:
     void refreshFailure(const QString &errorMessage);
 
 private slots:
+    void startRequest();
     void onSuccess(const QList<GagObject> &gagList);
     void onFailure(const QString &errorMessage);
     void onDownloadProgress(qint64 downloaded, qint64 total);

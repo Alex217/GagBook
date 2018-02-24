@@ -4,7 +4,7 @@ DEFINES += APP_VERSION=\\\"$$VERSION\\\" HAS_LIBRESOURCEQT
 
 QT += network widgets webkitwidgets
 
-CONFIG += link_pkgconfig sailfishapp
+CONFIG += sailfishapp c++11 #link_pkgconfig
 PKGCONFIG += libresourceqt5
 
 INCLUDEPATH += ..
@@ -22,7 +22,9 @@ HEADERS += \
     ../src/gagimagedownloader.h \
     ../src/gagcookiejar.h \
     ../src/volumekeylistener.h \
-    ../src/votingmanager.h
+    ../src/votingmanager.h \
+    ../src/ninegagapiclient.h \
+    ../src/ninegagapirequest.h
 
 SOURCES += main.cpp \
     ../src/qmlutils.cpp \
@@ -37,7 +39,9 @@ SOURCES += main.cpp \
     ../src/gagimagedownloader.cpp \
     ../src/gagcookiejar.cpp \
     ../src/volumekeylistener.cpp \
-    ../src/votingmanager.cpp
+    ../src/votingmanager.cpp \
+    ../src/ninegagapiclient.cpp \
+    ../src/ninegagapirequest.cpp
 
 # Qt-Json
 HEADERS += ../qt-json/json.h
@@ -67,4 +71,3 @@ OTHER_FILES += \
     qml/LoginDialog.qml \
     qml/Images/icon-gif-play.png \
     qml/VideoComponent.qml
-
