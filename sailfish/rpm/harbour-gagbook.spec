@@ -12,29 +12,29 @@ Name:       harbour-gagbook
 %{!?qtc_qmake5:%define qtc_qmake5 %qmake5}
 %{!?qtc_make:%define qtc_make make}
 %{?qtc_builddir:%define _builddir %qtc_builddir}
-Summary:    An unofficial app for 9GAG website
-Version:    1.2.7
+Summary:    An unofficial app for the 9GAG website
+Version:    1.3.0
 Release:    1
-Group:      Applications/Internet
+Group:      Qt/Qt
 License:    BSD
-URL:        https://github.com/llelectronics/GagBook
+URL:        https://github.com/Alex217/GagBook
 Source0:    %{name}-%{version}.tar.bz2
 Source100:  harbour-gagbook.yaml
 Requires:   sailfishsilica-qt5
 Requires:   qt5-plugin-imageformat-gif
+BuildRequires:  pkgconfig(sailfishapp)
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(Qt5Network)
-BuildRequires:  pkgconfig(Qt5WebKitWidgets)
 BuildRequires:  pkgconfig(Qt5Widgets)
-BuildRequires:  pkgconfig(sailfishapp)
+BuildRequires:  pkgconfig(Qt5WebKitWidgets)
 BuildRequires:  pkgconfig(qdeclarative5-boostable)
 BuildRequires:  pkgconfig(libresourceqt5)
 BuildRequires:  desktop-file-utils
 
 %description
-GagBook is an unofficial mobile app for 9GAG website that allows you to view posts from 9GAG easily with a simple, smooth and native user interface.
+GagBook is an unofficial mobile app for the 9GAG website that allows you to easily view posts from 9GAG with a simple, smooth and native user interface.
 
 
 %prep

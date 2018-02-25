@@ -5,6 +5,13 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+* Sun Feb 25 2018 Alexander Seibel <Alex217@t-online.de> 1.3.0-1
+- Implement a library to access the undisclosed official 9GAG API
+- Switch to the newly implemented data source
+- Speed up the app and reduce data and resource consumption due to the new API source
+- Reduce the amount of memory allocations by extending the object lifetime
+- Update the AboutPage
+
 * Tue Sep 12 2017 Leszek Lesner <leszek.lesner@web.de> 1.2.6-1
 - Comments API seems broken call mobile site instead
 - Also use devicePixelRatioHack.js
