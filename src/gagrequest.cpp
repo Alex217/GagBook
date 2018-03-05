@@ -61,10 +61,11 @@ void GagRequest::onFinished()
 {
     if (m_reply->error()) {
         qDebug() << "QNetworkReply error: " << m_reply->error() << "\nQNetworkReply object: " << m_reply->readAll();
-        emit failure(m_reply->errorString());
+        QString errorStr = m_reply->errorString();
         m_reply->disconnect();
         m_reply->deleteLater();
         m_reply = 0;
+        emit failure(errorStr);
         return;
     }
 

@@ -220,6 +220,8 @@ void GagModel::refresh(RefreshType refreshType)
         connect(m_request, SIGNAL(readyToRequest()), this, SLOT(startRequest()), Qt::UniqueConnection);
     }
 
+    Q_ASSERT(m_request != 0);
+
     if (!m_gagList.isEmpty()) {
         if (refreshType == RefreshAll) {
             beginRemoveRows(QModelIndex(), 0, m_gagList.count() - 1);
@@ -324,9 +326,12 @@ void GagModel::onFailure(const QString &errorMessage)
     emit refreshFailure(errorMessage);
 
     Q_ASSERT(m_request != 0);
-    m_request->disconnect();
-    m_request->deleteLater();
-    m_request = 0;
+
+   if (m_gagList.isEmpty()) {
+        m_request->disconnect();
+        m_request->deleteLater();
+        m_request = 0;
+   }
 
     if (m_busy != false) {
         m_busy = false;

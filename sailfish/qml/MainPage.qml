@@ -129,6 +129,7 @@ Page {
             hintText: qsTr("Check your WiFi or 3G settings and try refreshing from the menu.")
         }
 
+        // ToDo: 'refresh' will be executed twice if 'failure' is emitted in GagRequest (only on specific list scroll behaviour)
         onAtYEndChanged: if (atYEnd && !gagModel.busy && count > 0) gagModel.refresh(GagModel.RefreshOlder)
         onMovementEnded: mainPage.currentIndex = gagListView.indexAt(0, gagListView.contentY + gagListView.height / 2);
     }
