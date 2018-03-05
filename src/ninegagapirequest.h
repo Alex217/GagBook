@@ -31,11 +31,21 @@
 #include "gagrequest.h"
 #include "ninegagapiclient.h"
 
+/*!
+ * \brief The NineGagApiRequest class accesses the 9GAG API via the NineGagApiClient and parses the response to
+ *        a list of gags. \sa NineGagApiClient
+ */
 class NineGagApiRequest : public GagRequest
 {
     Q_OBJECT
 
 public:
+    /*!
+     * \brief NineGagApiRequest Constructor.
+     * \param networkManager Pointer to the global NetworkManager instance.
+     * \param section Specifies the 9GAG section from which the gags should be fetched.
+     * \param parent The parent object.
+     */
     explicit NineGagApiRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
     ~NineGagApiRequest();
 
@@ -49,7 +59,7 @@ private slots:
 
 private:
     NineGagApiClient *m_apiClient;
-    bool loginOngoing;
+    bool m_loginOngoing;
 };
 
 #endif // NINEGAGAPIREQUEST_H

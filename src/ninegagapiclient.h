@@ -40,6 +40,10 @@ class NineGagApiClient : public QObject
     Q_OBJECT
 
 public:
+    /*!
+     * \brief NineGagApiClient Constructor.
+     * \param parent The parent object.
+     */
     NineGagApiClient(QObject *parent = 0);
 
     /*!
@@ -62,6 +66,18 @@ public:
      */
     QNetworkReply *getPosts(NetworkManager *netMan, const QString &section, const QString &lastId);
 
+    /*!
+     * \brief sessionIsValid Checks if the login/session is still valid.
+     * \return Returns true if the session is still valid and a re-login is not needed.
+     */
+    bool sessionIsValid();
+
+    /*!
+     * \brief isGuestSession Returns the current login state (logged in as guest or user).
+     * \return Returns true if the API client has been logged in as guest.
+     */
+    bool isGuestSession();
+
 signals:
     void loggedIn();//bool successfully, QString &error);
 
@@ -72,8 +88,9 @@ private slots:
 private:
     QByteArray m_appToken;
     QByteArray m_deviceUUID;
-    int m_tokenExpiry;
     QNetworkReply *m_loginReply;
+    quint32 m_tokenExpiry;
+    bool m_isGuestSession;
 
     /*!
      * \brief getTimestamp Generates the current system time in milliseconds.

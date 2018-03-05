@@ -40,8 +40,8 @@
 NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
     GagRequest(networkManager, section, parent), m_apiClient(new NineGagApiClient(this))
 {
-    loginOngoing = true;
     connect(m_apiClient, SIGNAL(loggedIn()), this, SLOT(onLogin()), Qt::UniqueConnection);
+    m_loginOngoing = true;
 
     // ToDo: retrieve login data via QML
     //m_apiClient->login(this->networkManager(), false, "username", "password");
@@ -56,8 +56,24 @@ NineGagApiRequest::~NineGagApiRequest()
 
 void NineGagApiRequest::startRequest()
 {
-    if (!loginOngoing) {
-        emit readyToRequest();
+    if (!m_loginOngoing) {
+
+        // check if a re-login is required
+        if (m_apiClient->sessionIsValid()) {
+            emit readyToRequest();
+        }
+        else {
+            qDebug() << "Performing a re-login...";
+
+            // perform a re-login according to previous state
+            if (m_apiClient->isGuestSession()) {
+                m_loginOngoing = true;
+                m_apiClient->login(this->networkManager(), true);
+            }
+            else {
+                // ToDo: perform a user login
+            }
+        }
     }
 }
 
@@ -182,6 +198,6 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
 
 void NineGagApiRequest::onLogin()
 {
-    loginOngoing = false;
+    m_loginOngoing = false;
     emit readyToRequest();
 }

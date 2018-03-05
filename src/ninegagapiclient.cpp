@@ -64,8 +64,8 @@ const QByteArray COMMENT_CDN = "a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b";
 
 
 NineGagApiClient::NineGagApiClient(QObject *parent) :
-    QObject(parent), m_appToken(createSHA1()), m_deviceUUID(createUUID()), m_tokenExpiry(0),
-    m_loginReply(0)
+    QObject(parent), m_appToken(createSHA1()), m_deviceUUID(createUUID()), m_loginReply(0),
+    m_tokenExpiry(0), m_isGuestSession(true)
 {
 
 }
@@ -137,6 +137,10 @@ QNetworkReply *NineGagApiClient::request(NetworkManager *netMan, const QUrl &url
 
 void NineGagApiClient::guestLogin(NetworkManager *netMan)
 {
+    if (!m_isGuestSession) {
+        m_isGuestSession = true;
+    }
+
     QUrl url(API_URL + GUEST_PATH);
 
     Q_ASSERT(m_loginReply == 0);
@@ -147,6 +151,10 @@ void NineGagApiClient::guestLogin(NetworkManager *netMan)
 
 void NineGagApiClient::userLogin(NetworkManager *netMan, const QString &username, const QString &password)
 {
+    if (m_isGuestSession) {
+        m_isGuestSession = false;
+    }
+
     QUrl url(API_URL + LOGIN_PATH);
     QUrlQuery query;
 
@@ -184,8 +192,6 @@ void NineGagApiClient::login(NetworkManager *netMan, bool guest, const QString &
 // first a login is required to access the posts
 QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const QString &section, const QString &lastId)
 {
-    // ToDo: verify login first by checking if tokenExpiry is exceeded
-
     QUrl url(API_URL + POSTS_PATH);
     QUrlQuery query;
 
@@ -211,6 +217,35 @@ QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const QString 
     return this->request(netMan, url);
 }
 
+bool NineGagApiClient::sessionIsValid()
+{
+    if (m_tokenExpiry == 0) {
+        qWarning("First a login is required to fetch the posts!");
+        return false;
+    }
+    else {
+        // get current time in seconds
+        quint32 currentTime = (quint32) (this->getTimestamp().toULongLong() / (quint32) 1000);
+
+        // check for session expiry
+        if (currentTime > m_tokenExpiry) {
+            qDebug() << "The session expired. A re-login is required!";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool NineGagApiClient::isGuestSession()
+{
+    if (m_isGuestSession) {
+        return true;
+    }
+
+    return false;
+}
+
 void NineGagApiClient::guestLoginFinished()
 {
     QJsonDocument jsonDoc = QJsonDocument::fromJson(m_loginReply->readAll());
@@ -230,8 +265,6 @@ void NineGagApiClient::guestLoginFinished()
 void NineGagApiClient::userLoginFinished()
 {
     // ToDo: check Login success
-    // ToDo: get 'tokenExpiry' which is the timestemp of the login token expiration (e.g.: 1519374742)
-    //       from the 'data'-object, check the status in getPosts and emit a signal if a re-login is required
 
     //QJsonParseError error;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(m_loginReply->readAll());   //, &error);
