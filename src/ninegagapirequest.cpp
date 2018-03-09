@@ -37,8 +37,9 @@
 #include "networkmanager.h"
 
 
-NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
-    GagRequest(networkManager, section, parent), m_apiClient(new NineGagApiClient(this))
+NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, const int groupId, const QString &section,
+                                     QObject *parent)
+    : GagRequest(networkManager, groupId, section, parent), m_apiClient(new NineGagApiClient(this))
 {
     connect(m_apiClient, SIGNAL(loggedIn()), this, SLOT(onLogin()), Qt::UniqueConnection);
     m_loginOngoing = true;
@@ -77,9 +78,9 @@ void NineGagApiRequest::startRequest()
     }
 }
 
-QNetworkReply *NineGagApiRequest::createRequest(const QString &section, const QString &lastId)
+QNetworkReply *NineGagApiRequest::createRequest(const int groupId, const QString &section, const QString &lastId)
 {
-    return m_apiClient->getPosts(this->networkManager(), section, lastId);
+    return m_apiClient->getPosts(this->networkManager(), groupId, section, lastId);
 }
 
 QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)

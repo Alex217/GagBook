@@ -74,7 +74,7 @@ Page {
             }
         }
 
-        header: PageHeader { title: "/" + appSettings.sections[gagModel.selectedSection] }
+        header: PageHeader { title: "/" + appSettings.sections.getSection(gagModel.selectedSection).name }
 
         delegate: GagDelegate {}
 

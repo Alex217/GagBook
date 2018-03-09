@@ -24,7 +24,8 @@ HEADERS += \
     ../src/volumekeylistener.h \
     ../src/votingmanager.h \
     ../src/ninegagapiclient.h \
-    ../src/ninegagapirequest.h
+    ../src/ninegagapirequest.h \
+    ../src/sectionmodel.h
 
 SOURCES += main.cpp \
     ../src/qmlutils.cpp \
@@ -41,7 +42,8 @@ SOURCES += main.cpp \
     ../src/volumekeylistener.cpp \
     ../src/votingmanager.cpp \
     ../src/ninegagapiclient.cpp \
-    ../src/ninegagapirequest.cpp
+    ../src/ninegagapirequest.cpp \
+    ../src/sectionmodel.cpp
 
 # Qt-Json
 HEADERS += ../qt-json/json.h

@@ -33,7 +33,13 @@
 #include "networkmanager.h"
 
 GagRequest::GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_reply(0), m_section(section)
+    QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(-1), m_section(section)
+{
+}
+
+GagRequest::GagRequest(NetworkManager *networkManager, const int groupId, const QString &section,
+                       QObject *parent)
+    : QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(groupId), m_section(section)
 {
 }
 
@@ -51,7 +57,8 @@ void GagRequest::send()
 {
     Q_ASSERT(m_reply == 0);
 
-    m_reply = createRequest(m_section, m_lastId);
+    m_reply = createRequest(m_groupId, m_section, m_lastId);
+
     // make sure the QNetworkReply will be destroyed when this object is destroyed
     m_reply->setParent(this);
     connect(m_reply, SIGNAL(finished()), this, SLOT(onFinished()), Qt::UniqueConnection);

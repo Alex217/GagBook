@@ -60,11 +60,13 @@ public:
      * \brief getPosts Performs an API request and returns the response as QNetworkReply.
      *        Be aware that first a login has to be performed to access the servers.
      * \param netMan Pointer to the global NetworkManager instance.
-     * \param section The 9GAG section string as shown in the url of a browser session (e.g. 'hot', 'fresh').
+     * \param groupId The id to select between the different 9GAG sections/groups.
+     * \param section The 9GAG section string as shown in the url of a browser session (e.g. 'hot').
      * \param lastId The id of the last GagObject in the list.
      * \return Returns the JSON reply as QNetworkReply.
      */
-    QNetworkReply *getPosts(NetworkManager *netMan, const QString &section, const QString &lastId);
+    QNetworkReply *getPosts(NetworkManager *netMan, const int groupId, const QString &section,
+                            const QString &lastId);
 
     /*!
      * \brief sessionIsValid Checks if the login/session is still valid.
@@ -77,6 +79,8 @@ public:
      * \return Returns true if the API client has been logged in as guest.
      */
     bool isGuestSession();
+
+    QNetworkReply *retrieveSections(NetworkManager *netMan);
 
 signals:
     void loggedIn();//bool successfully, QString &error);

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -29,36 +30,49 @@
 
 #include <QtCore/QSettings>
 
-static QStringList defaultSections()
+AppSettings::AppSettings(QObject *parent) :
+    QObject(parent), m_settings(new QSettings(this)), m_sections(new SectionModel(this))
 {
-    QStringList sections;
-    sections.append("hot");
-    sections.append("trending");
-    sections.append("fresh");
-    sections.append("gif");
-    sections.append("cute");
-    sections.append("anime-manga");
-    sections.append("cosplay");
-    sections.append("relationship");
-    sections.append("timely");
-    sections.append("girl");
-    sections.append("food");
-    sections.append("wtf");
-    sections.append("movie-tv");
-    return sections;
+    readSettings();
 }
 
-AppSettings::AppSettings(QObject *parent) :
-    QObject(parent), m_settings(new QSettings(this))
+void AppSettings::readSettings()
 {
+    // reset deprecated config file
+    if (!m_settings->contains("version")) {
+        setDefaultSettings();
+        return;
+    }
+
     m_loggedIn = m_settings->value("loggedIn", false).toBool();
     m_whiteTheme = m_settings->value("whiteTheme", false).toBool();
     m_source = static_cast<Source>(m_settings->value("source", 0).toInt());
     m_scrollWithVolumeKeys = m_settings->value("scrollWithVolumeKeys", false).toBool();
-    m_sections = m_settings->value("sections").toStringList();
+    m_sections->restore(m_settings, "sections");
 
-    if (m_sections.isEmpty())
-        setSections(defaultSections());
+    if (m_sections->isEmpty())
+        m_sections->setDefaultSections();
+}
+
+void AppSettings::setDefaultSettings()
+{
+    m_settings->clear();
+
+    m_settings->setValue("version", "0.1");
+
+    m_loggedIn = false;
+    m_settings->setValue("loggedIn", m_loggedIn);
+
+    m_whiteTheme = false;
+
+    m_source = Source::NineGagApiSource;
+    m_settings->setValue("source", static_cast<int>(m_source));
+
+    m_scrollWithVolumeKeys = false;
+    m_settings->setValue("scrollWithVolumeKeys", m_scrollWithVolumeKeys);
+
+    m_sections->setDefaultSections();
+    m_sections->save(m_settings, "sections");
 }
 
 bool AppSettings::isLoggedIn() const
@@ -117,16 +131,17 @@ void AppSettings::setScrollWithVolumeKeys(bool scrollWithVolumeKeys)
     }
 }
 
-QStringList AppSettings::sections() const
+SectionModel *AppSettings::sections() const
 {
     return m_sections;
 }
 
-void AppSettings::setSections(const QStringList &sections)
+void AppSettings::setSections(const SectionModel *sections)
 {
-    if (m_sections != sections) {
-        m_sections = sections;
-        m_settings->setValue("sections", m_sections);
-        emit sectionsChanged();
-    }
+    Q_UNUSED(sections);
+//    if (m_sections != sections) {
+//        m_sections = sections;
+//        m_settings->setValue("sections", m_sections);
+//        emit sectionsChanged();
+//    }
 }

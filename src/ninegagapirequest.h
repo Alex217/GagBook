@@ -43,15 +43,17 @@ public:
     /*!
      * \brief NineGagApiRequest Constructor.
      * \param networkManager Pointer to the global NetworkManager instance.
+     * \param groupId The id to select between the different 9GAG sections/groups.
      * \param section Specifies the 9GAG section from which the gags should be fetched.
      * \param parent The parent object.
      */
-    explicit NineGagApiRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
+    explicit NineGagApiRequest(NetworkManager *networkManager, const int groupId, const QString &section,
+                               QObject *parent = 0);
     ~NineGagApiRequest();
 
 protected:
     void startRequest();
-    QNetworkReply *createRequest(const QString &section, const QString &lastId);
+    QNetworkReply *createRequest(const int groupId, const QString &section, const QString &lastId);
     QList<GagObject> parseResponse(const QByteArray &response);
 
 private slots:

@@ -39,14 +39,14 @@ Page {
         anchors.fill: parent
         model: appSettings.sections
 
-        header: PageHeader { title: "Section" }
-
-        PullDownMenu {
-            MenuItem {
-                text: qsTr("Add section")
-                onClicked: sectionPanel.open = true
-            }
-        }
+        header: PageHeader { title: qsTr("Sections") }
+// ToDo:
+//        PullDownMenu {
+//            MenuItem {
+//                text: qsTr("Add section")
+//                onClicked: sectionPanel.open = true
+//            }
+//        }
 
         delegate:
             BackgroundItem {
@@ -55,16 +55,16 @@ Page {
             height: menuOpen ? contextMenu.height + simpleListItem.height : simpleListItem.height
             property Item contextMenu
             property bool menuOpen: contextMenu != null && contextMenu.parent === bgdelegate
-
+// ToDo:
             function remove() {
                 var removal = removalComponent.createObject(bgdelegate)
-                removal.execute(simpleListItem,qsTr("Deleting ") + modelData, function() { appSettings.sections.splice(appSettings.sections.indexOf(modelData), 1) })
+                removal.execute(simpleListItem, qsTr("Deleting") + " " + modelData, function() { appSettings.sections.splice(appSettings.sections.indexOf(modelData), 1) })
             }
 
             SimpleListItem {
                 id: simpleListItem
                 selected: gagModel.selectedSection == index
-                text: modelData
+                text: name
 
                 function showContextMenu() {
                     if (!contextMenu)
@@ -78,7 +78,7 @@ Page {
                     pageStack.navigateBack();
                 }
 
-                onPressAndHold: showContextMenu()
+//                onPressAndHold: showContextMenu()
 
             }
             Component {
@@ -101,6 +101,8 @@ Page {
                 }
             }
         } // Background Item End
+
+        VerticalScrollDecorator {}
     }
 
     DockedPanel {
@@ -122,7 +124,7 @@ Page {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - (Theme.paddingLarge * 2)
             placeholderText: qsTr("Enter Sectioname")
-            label: "Section"
+            label: qsTr("Section")
             inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
             // Only allow Enter key to be pressed when text has been entered
             EnterKey.enabled: text.length > 0

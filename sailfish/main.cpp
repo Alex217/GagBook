@@ -39,6 +39,7 @@
 #include "src/appsettings.h"
 #include "src/volumekeylistener.h"
 #include "src/votingmanager.h"
+#include "../src/sectionmodel.h"
 
 Q_DECL_EXPORT int main(int argc, char *argv[])
 {
@@ -75,6 +76,10 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     qmlRegisterType<GagModel>("harbour.gagbook.Core", 1, 0, "GagModel");
     qmlRegisterType<AppSettings>("harbour.gagbook.Core", 1, 0, "AppSettings");
     qmlRegisterType<VotingManager>("harbour.gagbook.Core", 1, 0, "VotingManager");
+
+    qmlRegisterUncreatableType<SectionModel>("harbour.gagbook.Core", 1, 0, "SectionModel",
+                                             "SectionModel should not be created in QML!");
+    qRegisterMetaType<SectionModel*>("SectionModel*");
 
     view->setSource(SailfishApp::pathTo("qml/main.qml"));
     view->show();

@@ -52,6 +52,13 @@ public:
     /*! Constructor. \p section Specifies from which 9GAG section to get the gags, eg. hot, comic, etc. */
     explicit GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
 
+    /*!
+     * \brief GagRequest Overloaded Constructor.
+     * \param groupId The id to select between the different 9GAG sections/groups.
+     */
+    explicit GagRequest(NetworkManager *networkManager, const int groupId, const QString &section,
+                        QObject *parent = 0);
+
     /*! Set the id of the last gag in the list. If this is set, the gags retrieved are older than
         the last gag. */
     void setLastId(const QString &lastId);
@@ -84,7 +91,7 @@ protected:
     /*! Implement this to make your own network request. \p section specify from which
         9GAG section to get the gags, eg. hot, comic, etc. \p lastId is id of the last
         gag, can be empty. */
-    virtual QNetworkReply *createRequest(const QString &section, const QString &lastId) = 0;
+    virtual QNetworkReply *createRequest(const int groupId, const QString &section, const QString &lastId) = 0;
 
     /*! Implement this to parse the response to a list of gags. */
     virtual QList<GagObject> parseResponse(const QByteArray &response) = 0;
@@ -98,6 +105,7 @@ private slots:
 private:
     NetworkManager *m_networkManager;
     QNetworkReply *m_reply;
+    const int m_groupId;
     const QString m_section;
     QString m_lastId;
     QList<GagObject> m_gagList;

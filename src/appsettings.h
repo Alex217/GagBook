@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -30,7 +31,8 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QScopedPointer>
-#include <QtCore/QStringList>
+
+#include "sectionmodel.h"
 
 class QSettings;
 
@@ -63,7 +65,8 @@ class AppSettings : public QObject
     /*! List of 9GAG sections. This allow user to add/remove 9GAG sections manually and does not
         require an app update to view a newly added 9GAG sections. Currently there is no UI to
         modify this, that means user has to edit the config file manually. */
-    Q_PROPERTY(QStringList sections READ sections WRITE setSections NOTIFY sectionsChanged)
+    Q_PROPERTY(SectionModel *sections READ sections WRITE setSections NOTIFY sectionsChanged)
+
 public:
     enum Source {
         NineGagApiSource, //!< Use undisclosed official 9GAG API to fetch JSON data. \sa NineGagApiRequest
@@ -85,8 +88,8 @@ public:
     bool scrollWithVolumeKeys() const;
     void setScrollWithVolumeKeys(bool scrollWithVolumeKeys);
 
-    QStringList sections() const;
-    void setSections(const QStringList &sections);
+    SectionModel *sections() const;
+    void setSections(const SectionModel *sections);
 
 signals:
     void loggedInChanged();
@@ -103,7 +106,10 @@ private:
     bool m_whiteTheme;
     Source m_source;
     bool m_scrollWithVolumeKeys;
-    QStringList m_sections;
+    SectionModel *m_sections;
+
+    void readSettings();
+    void setDefaultSettings();
 };
 
 #endif // APPSETTINGS_H

@@ -53,6 +53,7 @@ const QByteArray ADMIN_URL = "https://admin.9gag.com";
 const QByteArray POSTS_PATH = "/v2/post-list";
 const QByteArray GUEST_PATH = "/v2/guest-token";
 const QByteArray LOGIN_PATH = "/v2/user-token";
+const QByteArray SECTIONS_PATH = "/v2/group-list";
 // "/v1/topComments.json"
 // "/v1/comment.json"
 
@@ -190,13 +191,14 @@ void NineGagApiClient::login(NetworkManager *netMan, bool guest, const QString &
 }
 
 // first a login is required to access the posts
-QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const QString &section, const QString &lastId)
+QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const int groupId, const QString &section,
+                                          const QString &lastId)
 {
     QUrl url(API_URL + POSTS_PATH);
     QUrlQuery query;
 
     // set query arguments
-    query.addQueryItem("group", "1");       // posts category
+    query.addQueryItem("group", QString::number(groupId));       // posts category
     query.addQueryItem("type", section);
     query.addQueryItem("itemCount", "10");  // count of posts
     // ToDo: disabled album and video posts until support is added | "animated,photo,video,album"
@@ -244,6 +246,18 @@ bool NineGagApiClient::isGuestSession()
     }
 
     return false;
+}
+
+QNetworkReply *NineGagApiClient::retrieveSections(NetworkManager *netMan)
+{
+    QUrl url(API_URL + SECTIONS_PATH);
+    QUrlQuery query;
+
+    query.addQueryItem("entryTypes", "animated,photo,video,album");
+    //query.addQueryItem("locale", "de_DE");    // ToDo: add device specific locale setting
+    url.setQuery(query.query());
+
+    return this->request(netMan, url);
 }
 
 void NineGagApiClient::guestLoginFinished()

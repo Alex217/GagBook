@@ -38,6 +38,7 @@
 #include "ninegagrequest.h"
 #include "ninegagapirequest.h"
 #include "gagimagedownloader.h"
+#include "sectionmodel.h"
 
 GagModel::GagModel(QObject *parent) :
     QAbstractListModel(parent), m_busy(false), m_progress(0), m_manualProgress(0), m_manager(0),
@@ -200,21 +201,25 @@ void GagModel::refresh(RefreshType refreshType)
             m_request = 0;
         }
 
-        const QString section = m_manager->settings()->sections().at(m_selectedSection);
+        SectionModel *sections = m_manager->settings()->sections();
+        const QString section = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
+                                               SectionModel::SectionRoles::UrlPathRole).toString();
 
         switch (m_manager->settings()->source()) {
-        default:
-            qWarning("GagModel::refresh(): Invalid source, default source will be used.");
-            // fallthrough
-        case AppSettings::NineGagApiSource:
-            m_request = new NineGagApiRequest(manager()->networkManager(), section, this);
-            break;
-        //case AppSettings::NineGagSource:
-            //m_request = new NineGagRequest(manager()->networkManager(), section, this);
-            //break;
-        //case AppSettings::InfiniGagSource:
-            //m_request = new InfiniGagRequest(manager()->networkManager(), section, this);
-            //break;
+            default:
+                qWarning("GagModel::refresh(): Invalid source, default source will be used.");
+                // fallthrough
+            case AppSettings::NineGagApiSource:
+                const int groupId = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
+                                                   SectionModel::SectionRoles::GroupIdRole).toInt();
+                m_request = new NineGagApiRequest(manager()->networkManager(), groupId, section, this);
+                break;
+            //case AppSettings::NineGagSource:
+                //m_request = new NineGagRequest(manager()->networkManager(), section, this);
+                //break;
+            //case AppSettings::InfiniGagSource:
+                //m_request = new InfiniGagRequest(manager()->networkManager(), section, this);
+                //break;
         }
 
         connect(m_request, SIGNAL(readyToRequest()), this, SLOT(startRequest()), Qt::UniqueConnection);
