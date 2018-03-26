@@ -61,7 +61,7 @@ public:
      *        Be aware that first a login has to be performed to access the servers.
      * \param netMan Pointer to the global NetworkManager instance.
      * \param groupId The id to select between the different 9GAG sections/groups.
-     * \param section The 9GAG section string as shown in the url of a browser session (e.g. 'hot').
+     * \param section Selects the 'subsection' inside the given group/section ('hot', 'trending' or 'vote').
      * \param lastId The id of the last GagObject in the list.
      * \return Returns the JSON reply as QNetworkReply.
      */

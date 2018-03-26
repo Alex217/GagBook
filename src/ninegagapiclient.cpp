@@ -199,9 +199,18 @@ QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const int grou
 
     // set query arguments
     query.addQueryItem("group", QString::number(groupId));       // posts category
-    query.addQueryItem("type", section);
+    //query.addQueryItem("type", section);
+
+    // ToDo: This is just a quick fix for the sections! Adapt the model and GUI to fix this properly.
+    // '-> "type" can be "hot" or "vote" for groups with 'groupId != 1'
+    if (groupId == 1) {
+        query.addQueryItem("type", section);
+    } else {
+        query.addQueryItem("type", "hot");
+    }
+
     query.addQueryItem("itemCount", "10");  // count of posts
-    // ToDo: disabled album and video posts until support is added | "animated,photo,video,album"
+    // ToDo: disabled album and video posts until support is added | "animated,photo,video,article"
     query.addQueryItem("entryTypes", "animated,photo");
     query.addQueryItem("offset", "10");
 
@@ -253,7 +262,7 @@ QNetworkReply *NineGagApiClient::retrieveSections(NetworkManager *netMan)
     QUrl url(API_URL + SECTIONS_PATH);
     QUrlQuery query;
 
-    query.addQueryItem("entryTypes", "animated,photo,video,album");
+    query.addQueryItem("entryTypes", "animated,photo,video,article");
     //query.addQueryItem("locale", "de_DE");    // ToDo: add device specific locale setting
     url.setQuery(query.query());
 
