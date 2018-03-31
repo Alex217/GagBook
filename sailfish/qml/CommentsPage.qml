@@ -33,7 +33,7 @@ Page {
 
     property string gagURL
     property string appId: "a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b"
-    readonly property string rootUrl: "https://m." + gagURL.slice(8) + "#comment"
+    readonly property string rootUrl: gagURL
     property string apiCallUrl: "http://comment-cdn.9gag.com/v1/topComments.json?appId=" +
                                 appId +
                                 "&urls=" + gagURL + "&commentL1=5&commentL2=3&pretty=0"
@@ -58,6 +58,7 @@ Page {
 //    }
 
     SilicaWebView {
+        id: webView
         anchors.fill: parent
         header: PageHeader { title: "Comments" }
         url: rootUrl
@@ -74,10 +75,18 @@ Page {
                     Qt.resolvedUrl("devicePixelRatioHack.js")
         ]
 
-        PullDownMenu {
-            MenuItem {
-                text: "Go Back"
-                onClicked: pageStack.pop();
+        Loader {
+            anchors.centerIn: parent
+            sourceComponent: webView.loading ? loadingIndicator : undefined
+
+            Component {
+                id: loadingIndicator
+
+                BusyIndicator {
+                    id: busyIndicator
+                    running: true
+                    size: BusyIndicatorSize.Large
+                }
             }
         }
 
