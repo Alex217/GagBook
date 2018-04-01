@@ -46,21 +46,22 @@ class GagBookManager;
 class GagRequest;
 class GagImageDownloader;
 
-/*! List model of GagObject list for QML. */
+/*! \brief The GagModel class subclasses QAbstractListModel and contains the GagObjects. This list
+ * model is used within QML. */
 class GagModel : public QAbstractListModel, public QQmlParserStatus
 {
     Q_OBJECT
     DECL_QMLPARSERSTATUS_INTERFACE
     Q_ENUMS(RefreshType)
 
-    /*! True if there is active refresh request. Busy visual feedback should show to user and
-        refresh should be disable. */
+    /*! True if there is an active refresh request. Busy visual feedback should be shown to
+        the user and the refresh option should be disabled. */
     Q_PROPERTY(bool busy READ isBusy NOTIFY busyChanged)
 
-    /*! The current progress of downloading images. Value between 0.0 to 1.0. */
+    /*! The current progress of the file downloads. Value between 0.0 to 1.0. */
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
 
-    /*! The current progress of manually downloading image (using downloadImage()).
+    /*! The current progress of a manual file download (using downloadImage()).
         Value between 0.0 to 1.0. */
     Q_PROPERTY(qreal manualProgress READ manualProgress NOTIFY manualProgressChanged)
 
@@ -72,7 +73,7 @@ class GagModel : public QAbstractListModel, public QQmlParserStatus
     Q_PROPERTY(int selectedSection READ selectedSection WRITE setSelectedSection NOTIFY selectedSectionChanged)
 public:
     enum Roles {
-        TitleRole = Qt::UserRole,
+        TitleRole = Qt::UserRole +1,
         IdRole,
         UrlRole,
         ImageUrlRole,
@@ -87,6 +88,7 @@ public:
         IsGIFRole,
         IsVideoRole,
         IsPartialImageRole,
+        SavedFileUrlRole,
         IsDownloadingRole
     };
 
@@ -103,6 +105,8 @@ public:
     int rowCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
     QHash<int, QByteArray> roleNames() const;
+    Qt::ItemFlags flags(const QModelIndex &index) const;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole);
 
     bool isBusy() const;
     qreal progress() const;
@@ -118,8 +122,7 @@ public:
     Q_INVOKABLE void refresh(RefreshType refreshType);
     /*! Stop and abort the refresh request. */
     Q_INVOKABLE void stopRefresh();
-    /*! Download an image for a gag at index \p i. If the gag is a GIF,
-        the GIF image is download instead. */
+    /*! Download the corresponding image/file for a gag at index \p i. */
     Q_INVOKABLE void downloadImage(int i);
     /*! Change the `likes` of a gag with the \p id. */
     Q_INVOKABLE void changeLikes(const QString &id, int likes);
@@ -130,8 +133,8 @@ signals:
     void manualProgressChanged();
     void selectedSectionChanged();
 
-    /*! Emit when refresh failed, \p errorMessage contains the reason for the
-        failure and should show to user. */
+    /*! Emit when the refresh failed, \p errorMessage contains the reason for the
+        failure and should be shown to the user. */
     void refreshFailure(const QString &errorMessage);
 
 private slots:

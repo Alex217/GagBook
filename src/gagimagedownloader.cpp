@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -39,23 +40,24 @@
 #include "networkmanager.h"
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-static const QString IMAGE_CACHE_PATH = QDesktopServices::storageLocation(QDesktopServices::CacheLocation)
+static const QString FILE_CACHE_PATH = QDesktopServices::storageLocation(QDesktopServices::CacheLocation)
         + "/gagbook";
 #else
-static const QString IMAGE_CACHE_PATH = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-        + "/gagbook";
+static const QString FILE_CACHE_PATH = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+        + "/harbour-gagbook";
 #endif
 
 void GagImageDownloader::initializeCache()
 {
-    // create the cache dir if not exists
-    QDir imageCacheDir(IMAGE_CACHE_PATH);
-    if (!imageCacheDir.exists())
-        imageCacheDir.mkpath(".");
+    // create the cache dir if not existent
+    QDir fileCacheDir(FILE_CACHE_PATH);
+    if (!fileCacheDir.exists())
+        fileCacheDir.mkpath(".");
 }
 
 GagImageDownloader::GagImageDownloader(NetworkManager *networkManager, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_downloadGIF(false), m_downloadVideo(false)
+    QObject(parent), m_networkManager(networkManager), m_downloadPartialImage(false),
+    m_downloadGIF(false), m_downloadVideo(false)
 {
 }
 
@@ -67,6 +69,16 @@ QList<GagObject> GagImageDownloader::gagList() const
 void GagImageDownloader::setGagList(const QList<GagObject> &gagList)
 {
     m_gagList = gagList;
+}
+
+bool GagImageDownloader::downloadPartialImage() const
+{
+    return m_downloadPartialImage;
+}
+
+void GagImageDownloader::setDownloadPartialImage(bool downloadPartialImage)
+{
+    m_downloadPartialImage = downloadPartialImage;
 }
 
 bool GagImageDownloader::downloadGIF() const
@@ -86,25 +98,40 @@ void GagImageDownloader::setDownloadVideo(bool downloadVideo)
 
 void GagImageDownloader::start()
 {
-    // if there is still downloads ongoing when start() is called
+    // if there are still downloads ongoing when start() is called then
     // there will be big problem since m_gagList will be replaced
     Q_ASSERT(m_replyHash.isEmpty());
-    foreach (const GagObject &gag, m_gagList) {
-        if (gag.imageUrl().isEmpty() && gag.gifImageUrl().isEmpty() && gag.videoUrl().isEmpty())
-            continue;
 
+    foreach (const GagObject &gag, m_gagList) {
+        if (gag.imageUrl().isEmpty() ||
+                (gag.isGIF() && gag.gifImageUrl().isEmpty()) ||
+                (gag.isVideo() && gag.videoUrl().isEmpty()) ||
+                (gag.isPartialImage() && gag.fullImageUrl().isEmpty())) {
+            qWarning("GagImageDownloader::start(): Missing the file source URL, skip the download");
+            continue;
+        }
         else if (m_downloadVideo && !gag.isVideo()) {
-            qWarning("GagImageDownloader::start(): Not Video, skip");
+            qWarning("GagImageDownloader::start(): Not a Video, skip the download");
             continue;
         }
         else if (m_downloadGIF && !gag.isGIF()) {
-            qWarning("GagImageDownloader::start(): Not GIF, skip");
+            qWarning("GagImageDownloader::start(): Not a GIF, skip the download");
             continue;
         }
+        else if (m_downloadPartialImage && !gag.isPartialImage()) {
+            qWarning("GagImageDownloader::start(): Not a long image, skip the download");
+            continue;
+        }
+
         QUrl downloadImageUrl;
-        if (m_downloadVideo) downloadImageUrl = gag.videoUrl();
-        else if (m_downloadGIF) downloadImageUrl = gag.gifImageUrl();
-        else downloadImageUrl = gag.imageUrl();
+        if (m_downloadVideo)
+            downloadImageUrl = gag.videoUrl();
+        else if (m_downloadGIF)
+            downloadImageUrl = gag.gifImageUrl();
+        else if (m_downloadPartialImage)
+            downloadImageUrl = gag.fullImageUrl();
+        else
+            downloadImageUrl = gag.imageUrl();
 
         QNetworkReply *reply = m_networkManager->createGetRequest(downloadImageUrl, NetworkManager::Image);
         // make sure the QNetworkReply will be destroy when this object is destroyed
@@ -138,7 +165,7 @@ void GagImageDownloader::onFinished()
 
     if (reply->error() == QNetworkReply::NoError) {
         const QString urlStr = reply->url().toString();
-        const QString fileName = IMAGE_CACHE_PATH + "/" + urlStr.mid(urlStr.lastIndexOf("/") + 1);
+        const QString fileName = FILE_CACHE_PATH + "/" + urlStr.mid(urlStr.lastIndexOf("/") + 1);
 
         QFile image(fileName);
         bool opened = image.open(QIODevice::WriteOnly);
@@ -148,18 +175,26 @@ void GagImageDownloader::onFinished()
 
             GagObject gag = m_replyHash.value(reply);
             if (m_downloadVideo) {
-                if (gag.videoUrl().isEmpty())
-                    return;
+                if (gag.imageUrl().isEmpty())
+                    gag.setImageUrl(QUrl::fromLocalFile(fileName));
                 gag.setVideoUrl(QUrl::fromLocalFile(fileName));
             }
             else if (m_downloadGIF) {
                 if (gag.imageUrl().isEmpty())
                     gag.setImageUrl(QUrl::fromLocalFile(fileName));
                 gag.setGifImageUrl(QUrl::fromLocalFile(fileName));
-            } else {
+            }
+            else if (m_downloadPartialImage) {
+                if (gag.imageUrl().isEmpty())
+                    gag.setImageUrl(QUrl::fromLocalFile(fileName));
+                gag.setFullImageUrl(QUrl::fromLocalFile(fileName));
+            }
+            else {
                 gag.setImageUrl(QUrl::fromLocalFile(fileName));
             }
-            gag.setImageSize(QImageReader(&image).size());
+
+            if (!m_downloadPartialImage)
+                gag.setImageSize(QImageReader(&image).size());
         } else {
             qWarning("GagImageDownloader::onFinished(): Unable to open QFile [with fileName = %s] for writing: %s",
                      qPrintable(fileName), qPrintable(image.errorString()));
@@ -168,6 +203,9 @@ void GagImageDownloader::onFinished()
         if (reply->error() != QNetworkReply::OperationCanceledError) {
             qWarning("GagImageDownloader::onFinished(): Network error for [%s]: %s",
                      qPrintable(reply->url().toString()), qPrintable(reply->errorString()));
+        }
+        else {
+            qDebug("GagImageDownloader::onFinished(): Aborted all active downloads");
         }
     }
 

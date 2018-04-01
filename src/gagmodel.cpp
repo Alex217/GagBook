@@ -59,6 +59,7 @@ GagModel::GagModel(QObject *parent) :
     _roles[IsGIFRole] = "isGIF";
     _roles[IsVideoRole] = "isVideo";
     _roles[IsPartialImageRole] = "isPartialImage";
+    _roles[SavedFileUrlRole] = "savedFileUrl";
     _roles[IsDownloadingRole] = "isDownloading";
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     setRoleNames(_roles);
@@ -94,18 +95,19 @@ QVariant GagModel::data(const QModelIndex &index, int role) const
     case UrlRole:
         return gag.url();
     case ImageUrlRole:
-        // should use QUrl::isLocalFile() but it is introduced in Qt 4.8
-        if (gag.imageUrl().scheme() != "file")
+        if (!gag.imageUrl().isLocalFile())
             return QUrl();
         return gag.imageUrl();
     case FullImageUrlRole:
+        if (!gag.fullImageUrl().isLocalFile())
+            return QUrl();
         return gag.fullImageUrl();
     case GifImageUrlRole:
-        if (gag.gifImageUrl().scheme() != "file")
+        if (!gag.gifImageUrl().isLocalFile())
             return QUrl();
         return gag.gifImageUrl();
     case VideoUrlRole:
-        if (gag.videoUrl().scheme() != "file")
+        if (!gag.videoUrl().isLocalFile())
             return QUrl();
         return gag.videoUrl();
     case ImageSizeRole:
@@ -124,6 +126,10 @@ QVariant GagModel::data(const QModelIndex &index, int role) const
         return gag.isVideo();
     case IsPartialImageRole:
         return gag.isPartialImage();
+    case SavedFileUrlRole:
+        if (!gag.savedFileUrl().isLocalFile())
+            return QUrl();
+        return gag.savedFileUrl();
     case IsDownloadingRole:
         return index.row() == m_downloadingIndex;
     default:
@@ -135,6 +141,33 @@ QVariant GagModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> GagModel::roleNames() const
 {
     return _roles;
+}
+
+Qt::ItemFlags GagModel::flags(const QModelIndex &index) const
+{
+    return QAbstractListModel::flags(index) | Qt::ItemIsEditable;
+}
+
+bool GagModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    bool success = false;
+    QVector<int> roles;
+    roles << role;
+
+    if (index.isValid() && index.row() < m_gagList.count())
+    {
+        switch (role) {
+            case Roles::SavedFileUrlRole:
+                m_gagList[index.row()].setSavedFileUrl(value.toUrl());
+                success = true;
+                break;
+        }
+    }
+
+    if (success)
+        emit dataChanged(index, index, roles);
+
+    return success;
 }
 
 bool GagModel::isBusy() const
@@ -285,6 +318,7 @@ void GagModel::downloadImage(int i)
     m_manualImageDownloader->setGagList(gags);
     m_manualImageDownloader->setDownloadVideo(gags.first().isVideo());
     m_manualImageDownloader->setDownloadGIF(gags.first().isGIF());
+    m_manualImageDownloader->setDownloadPartialImage(gags.first().isPartialImage());
     connect(m_manualImageDownloader, SIGNAL(downloadProgress(qint64,qint64)),
             SLOT(onManualDownloadProgress(qint64,qint64)));
     connect(m_manualImageDownloader, SIGNAL(finished()), SLOT(onManualDownloadFinished()));

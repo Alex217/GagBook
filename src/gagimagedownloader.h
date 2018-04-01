@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -57,9 +58,16 @@ public:
 
     /*! Set the list of GagObject that their images want to be downloaded.
         GagObject::imageUrl() (or GagObject::gifImageUrl() if downloadGIF() is true) must
-        be a valid web URL and will be change to a local URL to the cache image file after
+        be a valid web URL and will be changed to a local URL to the cache image file after
         the image has been downloaded. */
     void setGagList(const QList<GagObject> &gagList);
+
+    /*! Getter for the downloadPartialImage variable. */
+    bool downloadPartialImage() const;
+
+    /*! If this is set to true, then partial (long) images (GagObject::fullImageUrl()) will
+        be downloaded instead of the title images (GagObject::imageUrl). */
+    void setDownloadPartialImage(bool downloadPartialImage);
 
     /*! Get the value of downloadGIF set with setDownloadGIF(). */
     bool downloadGIF() const;
@@ -75,7 +83,7 @@ public:
     /*! Start the download request. */
     void start();
 
-    /*! Stop and abort all active download request. */
+    /*! Stop and abort all active download requests. */
     void stop();
 
 signals:
@@ -91,6 +99,7 @@ private slots:
 private:
     NetworkManager *m_networkManager;
     QList<GagObject> m_gagList;
+    bool m_downloadPartialImage;
     bool m_downloadGIF;
     bool m_downloadVideo;
 

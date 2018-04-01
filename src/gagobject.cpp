@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -36,14 +37,20 @@ class GagObjectData : public QSharedData
 {
 public:
     GagObjectData() : votesCount(0), commentsCount(0), likes(0),
-        isNSFW(false), isGIF(false), isVideo(false), isPartialImage(false) {}
+        isNSFW(false), isGIF(false), isVideo(false), isPartialImage(false)
+    {
+    }
+
     ~GagObjectData() {
-        if (imageUrl.scheme() == "file")
+        // delete cached files
+        if (imageUrl.isLocalFile())
             QFile::remove(imageUrl.toLocalFile());
-        if (gifImageUrl.scheme() == "file")
+        if (gifImageUrl.isLocalFile())
             QFile::remove(gifImageUrl.toLocalFile());
-        if (videoUrl.scheme() == "file")
+        if (videoUrl.isLocalFile())
             QFile::remove(videoUrl.toLocalFile());
+        if (fullImageUrl.isLocalFile())
+            QFile::remove(fullImageUrl.toLocalFile());
     }
 
     QString id;
@@ -61,6 +68,7 @@ public:
     bool isGIF;
     bool isVideo;
     bool isPartialImage;
+    QUrl savedFileUrl;
 
 private:
     Q_DISABLE_COPY(GagObjectData) // Disable copy for the data
@@ -234,4 +242,14 @@ bool GagObject::isPartialImage() const
 void GagObject::setIsPartialImage(bool isPartialImage)
 {
     d->isPartialImage = isPartialImage;
+}
+
+QUrl GagObject::savedFileUrl() const
+{
+    return d->savedFileUrl;
+}
+
+void GagObject::setSavedFileUrl(const QUrl &url)
+{
+    d->savedFileUrl = url;
 }

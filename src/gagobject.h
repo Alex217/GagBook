@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -35,10 +36,10 @@ class GagObjectData;
 
 /*! Data object representing each 9GAG post
 
-    A data object that representing each 9GAG post (aka "gag"). GagObject is
+    A data object that represents each 9GAG post (aka "gag"). GagObject is
     an explicitly shared class, that means only a shallow copy is done when
-    copying this object. This class can not be deep copy, since each gag is
-    suppose to be unique.
+    copying this object. It is not possible to deep copy an object of this class,
+    since each gag is supposed to be unique.
 
     \sa [QExplicitlySharedDataPointer](http://qt-project.org/doc/qt-4.8/qexplicitlyshareddatapointer.html)
  */
@@ -94,6 +95,9 @@ public:
 
     bool isPartialImage() const;
     void setIsPartialImage(bool isPartialImage);
+
+    QUrl savedFileUrl() const;
+    void setSavedFileUrl(const QUrl &url);
     
 private:
     QExplicitlySharedDataPointer<GagObjectData> d;

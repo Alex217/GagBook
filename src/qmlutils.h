@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -53,9 +54,14 @@ public:
     /*! Copy the \p text to system clipboard. */
     Q_INVOKABLE void copyToClipboard(const QString &text);
 
-    /*! Save a cached image to gallery. The \p imageUrl must be a url point to
-      a **local** cached image file. */
-    Q_INVOKABLE QString saveImage(const QUrl &imageUrl);
+    /*! Save a cached file to gallery. The \p imageUrl must be a url pointing to
+      a **locally** cached (image) file. Set \p isLongImage to true if it is a
+      long image so that it will be scaled down to a supported size. */
+    Q_INVOKABLE QString saveImage(const QUrl &imageUrl, bool isLongImage = false);
+
+    /*! Checks if the file with the given \param fileName url exists.
+     * \return Returns true if the file exists. */
+    Q_INVOKABLE bool fileExists(const QString &fileName);
 
     /*! Share the \p link using Harmattan Share UI. Only available for Harmattan. */
     Q_INVOKABLE void shareLink(const QString &link, const QString &title = QString());

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -193,7 +194,7 @@ Item {
                                 font.pixelSize: Theme.fontSizeMedium
                                 color: Theme.primaryColor
                                 wrapMode: Text.Wrap
-                                text: "Click to download image"
+                                text: "Tap to download the image"
                             }
                         }
                     }
@@ -259,7 +260,7 @@ Item {
                             Label {
                                 anchors.centerIn: parent
                                 font.pixelSize: constant.fontSizeSmall
-                                text: "Click to see full image"
+                                text: "Show the entire image"
                             }
                         }
                     }
@@ -277,7 +278,6 @@ Item {
                         } else {
                             gagImageLoader.playVideo = !gagImageLoader.playVideo;
                         }
-                        return;
                     }
                     else if (model.isGIF) {
                         if (!model.gifImageUrl.toString()) {
@@ -287,8 +287,12 @@ Item {
                         } else {
                             gagImageLoader.playGif = !gagImageLoader.playGif;
                         }
-                        return;
-                    } else if (gagImageLoader.item.status == Image.Null) {
+                    } else if (model.isPartialImage) {
+                        if (!model.fullImageUrl.toString()) {
+                            gagModel.downloadImage(index);
+                        }
+                        pageStack.push(Qt.resolvedUrl("ImagePage.qml"), { gag: model });
+                    } else if (gagImageLoader.item.status === Image.Null) {
                         // download image
                         gagModel.downloadImage(index);
                     } else {
@@ -306,13 +310,13 @@ Item {
             IconButton {
                 enabled: appSettings.loggedIn && !votingManager.busy
                 icon.source: "image://theme/icon-m-up"
-                highlighted: model.likes == 1
+                highlighted: model.likes === 1
                 onClicked: votingManager.vote(model.id, highlighted ? VotingManager.Unlike : VotingManager.Like);
             }
             IconButton {
                 enabled: appSettings.loggedIn && !votingManager.busy
                 icon.source: "image://theme/icon-m-down"
-                highlighted: model.likes == -1
+                highlighted: model.likes === -1
                 onClicked: votingManager.vote(model.id, highlighted ? VotingManager.Unlike : VotingManager.Dislike);
             }
             IconButton {
@@ -332,27 +336,48 @@ Item {
                 onClicked: QMLUtils.shareLink(model.url, model.title)
             }*/
             IconButton {
-                property string __savedFilePath: ""
+                property string _savedFilePath: ""
                 icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
-                icon.source: "image://theme/icon-m-" + (__savedFilePath ? "image" : "download")
+                icon.source: "image://theme/icon-m-" + (model.savedFileUrl.toString() ? "image" : "download")
                 onClicked: {
-                    if (!__savedFilePath) {
-                        if (model.isGIF && !model.gifImageUrl.toString()) {
-                            infoBanner.alert("You have to download the GIF first by clicking on the image");
+                    if (!model.savedFileUrl.toString()) {
+                        // check if the URL points to a local file (see GagModel::data())
+                        if ((model.isVideo && !model.videoUrl.toString()) ||
+                                (model.isGIF && !model.gifImageUrl.toString()) ||
+                                (model.isPartialImage && !model.fullImageUrl.toString())) {
+                            infoBanner.alert("First you have to download the file by tapping on it");
                             return;
                         }
-                        __savedFilePath = QMLUtils.saveImage(model.isGIF ? model.gifImageUrl : model.imageUrl);
-                        if (__savedFilePath) {
-                            var displayPath = __savedFilePath;
-                            if (__savedFilePath.indexOf("file://") == 0)
-                                displayPath = displayPath.substring(7);
-                            infoBanner.alert("Image saved to " + displayPath);
+
+                        if (model.isVideo) {
+                            model.savedFileUrl = QMLUtils.saveImage(model.videoUrl);
+                        } else if (model.isGIF) {
+                            model.savedFileUrl = QMLUtils.saveImage(model.gifImageUrl);
+                        } else if (model.isPartialImage) {
+                            // download downscaled long image
+                            model.savedFileUrl = QMLUtils.saveImage(model.fullImageUrl, true);
                         } else {
-                            infoBanner.alert("Unable to save image");
+                            model.savedFileUrl = QMLUtils.saveImage(model.imageUrl);
                         }
-                    } else {
-                        Qt.openUrlExternally(__savedFilePath);
-                        __savedFilePath = "";
+
+                        _savedFilePath = model.savedFileUrl;
+
+                        if (_savedFilePath.indexOf("file://") == 0) {
+                            var displayPath = _savedFilePath;
+                            if (_savedFilePath)
+                                displayPath = displayPath.substring(7);
+                            infoBanner.alert("File saved to " + displayPath);
+                        } else {
+                            infoBanner.alert("Unable to save file");
+                        }
+                    }
+                    else {
+                        if (!QMLUtils.fileExists(model.savedFileUrl)) {
+                            infoBanner.alert("The file has been deleted");
+                            model.savedFileUrl = "";
+                        } else {
+                            Qt.openUrlExternally(model.savedFileUrl);
+                        }
                     }
                 }
             }

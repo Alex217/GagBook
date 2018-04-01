@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -27,6 +28,7 @@
 
 #include "qmlutils.h"
 
+#include <QImage>
 #include <QtCore/QFile>
 #include <QtCore/QDir>
 #include <QtGui/QClipboard>
@@ -68,7 +70,9 @@ int QMLUtils::imageMaxHeight() const
 #elif defined(Q_OS_SYMBIAN)
     return 2500;
 #else
-    return 3000;
+    return 4096;
+    // macro seems to be not working, gives the value 3379 for different devices
+    //return GL_MAX_TEXTURE_SIZE;
 #endif
 }
 
@@ -91,27 +95,56 @@ void QMLUtils::copyToClipboard(const QString &text)
 #endif
 }
 
-QString QMLUtils::saveImage(const QUrl &imageUrl)
+QString QMLUtils::saveImage(const QUrl &imageUrl, bool isLongImage)
 {
-    // if the url is not local file, return
-    if (imageUrl.scheme() != "file")
+    // if the url is not a local file, return
+    if (!imageUrl.isLocalFile())
         return QString("");
 
-    // create the image saving directory if does not exist
+    // create the image saving directory if not existent
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    QDir imageSavingDir(QDesktopServices::storageLocation(QDesktopServices::PicturesLocation));
+    QDir fileSavingDir(QDesktopServices::storageLocation(QDesktopServices::PicturesLocation));
 #else
-    QDir imageSavingDir(QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
+    QDir fileSavingDir(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/GagBook");
 #endif
-    if (!imageSavingDir.exists())
-        imageSavingDir.mkpath(".");
+    if (!fileSavingDir.exists())
+        fileSavingDir.mkpath(".");
 
     const QString imagePath = imageUrl.toLocalFile();
-    const QString copyPath = imageSavingDir.absoluteFilePath(imagePath.mid(imagePath.lastIndexOf("/") + 1));
-    bool success = QFile::copy(imagePath, copyPath);
+    const QString copyPath = fileSavingDir.absoluteFilePath(imagePath.mid(imagePath.lastIndexOf("/") + 1));
+    bool success;
 
-    // use QUrl to get the file:// scheme so that it can be open using Qt.openUrlExternally() in QML
-    return (success ? QUrl::fromLocalFile(copyPath).toString() : QString(""));
+    if (isLongImage) {
+        // scale the long image to a supported height so that the gallery is able to open/render it without downscaling
+        QImage longImg(imagePath);
+        if (!longImg.isNull()) {
+            if (longImg.height() > imageMaxHeight()) {
+                // using 'SmoothTransformation' may take a few seconds on very long images (e.g. height > 10000)
+                QImage scaledImg(longImg.scaledToHeight(imageMaxHeight(), Qt::SmoothTransformation));
+                success = scaledImg.save(copyPath);
+            }
+            else
+                success = QFile::copy(imagePath, copyPath);
+        }
+        else
+            success = false;
+    }
+    else {
+        success = QFile::copy(imagePath, copyPath);
+    }
+
+    // use QUrl to get the 'file://' scheme so that it can be opened using Qt.openUrlExternally() in QML
+    return ((success || QFile::exists(copyPath)) ? QUrl::fromLocalFile(copyPath).toString() : QString(""));
+}
+
+bool QMLUtils::fileExists(const QString &fileName)
+{
+    if (QFile::exists(QUrl(fileName).toLocalFile())) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 void QMLUtils::shareLink(const QString &link, const QString &title)
