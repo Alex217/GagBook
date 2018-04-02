@@ -33,19 +33,27 @@
 #include "networkmanager.h"
 
 GagRequest::GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(-1), m_section(section)
+    QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(-1), m_section(section),
+    m_noMorePosts(false)
 {
 }
 
 GagRequest::GagRequest(NetworkManager *networkManager, const int groupId, const QString &section,
                        QObject *parent)
-    : QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(groupId), m_section(section)
+    : QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(groupId), m_section(section),
+      m_noMorePosts(false)
 {
 }
 
 void GagRequest::setLastId(const QString &lastId)
 {
     m_lastId = lastId;
+}
+
+void GagRequest::setNoMorePosts(bool noMorePosts)
+{
+    m_noMorePosts = noMorePosts;
+    // ToDo: emit signal/change state in corresponding view
 }
 
 void GagRequest::initiateRequest()
@@ -82,8 +90,12 @@ void GagRequest::onFinished()
     m_reply = 0;
 
     m_gagList = parseResponse(response);
-    if (m_gagList.isEmpty())
-        emit failure("Unable to parse response");
+    if (m_gagList.isEmpty()) {
+        if (m_noMorePosts)
+            emit failure("Reached end of the list. There are no further posts available");
+        else
+            emit failure("Unable to parse response");
+    }
     else
         emit success(m_gagList);
 }

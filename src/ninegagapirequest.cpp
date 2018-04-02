@@ -92,6 +92,13 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
     if (postsList.isEmpty()) {
         qWarning("Empty JSON API response!");
         qDebug() << "### API response is: ###\n" << response;
+
+        // if reached end of the list and there are no further posts (e.g. possible inside 'Fresh' section)
+        if (rootObj.value("data").toObject().value("didEndOfList").toDouble())
+        {
+            setNoMorePosts(true);
+            qDebug() << "Reached end of the list. There are no further posts to fetch.";
+        }
     }
 
     QList<GagObject> gagList;
@@ -185,7 +192,7 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
             // ToDo: extend the model to support albums
             // ToDo: for the meantime add a warning message to the user
         }
-        else {      // e.g. "Video", which is a Youtube video
+        else {      // "Article" and "Video", which is a Youtube video
             qWarning("Found an unsupported gag type!");
             // ToDo: extend the model to support videos
             // ToDo: for the meantime add a warning message to the user

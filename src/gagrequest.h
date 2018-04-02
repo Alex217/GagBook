@@ -63,6 +63,10 @@ public:
         the last gag. */
     void setLastId(const QString &lastId);
 
+    /*! \brief setNoMorePosts Sets the state for the case if there are no further posts available to fetch.
+     * Set \p noMorePosts to true if there are no further posts available for the current section/groupId. */
+    void setNoMorePosts(bool noMorePosts);
+
     /*! Initiates the request. */
     void initiateRequest();
 
@@ -109,6 +113,7 @@ private:
     const QString m_section;
     QString m_lastId;
     QList<GagObject> m_gagList;
+    bool m_noMorePosts;
 };
 
 #endif // GAGREQUEST_H
