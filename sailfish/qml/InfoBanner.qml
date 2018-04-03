@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -33,7 +34,7 @@ MouseArea {
 
     function alert(text) {
         messageText.text = text;
-        infoBanner.opacity = 1.0;
+        infoBanner.opacity = 0.9;
         hideTimer.start();
     }
 
@@ -46,7 +47,7 @@ MouseArea {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.highlightColor
+        color: Theme.overlayBackgroundColor //Theme.highlightDimmerColor
     }
 
     Text {
@@ -56,7 +57,7 @@ MouseArea {
             verticalCenter: parent.verticalCenter
         }
         font.pixelSize: constant.fontSizeSmall
-        color: constant.colorLight
+        color: Theme.highlightColor
         wrapMode: Text.Wrap
         elide: Text.ElideRight
         maximumLineCount: 3
