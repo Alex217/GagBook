@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -62,6 +63,7 @@ Dialog {
 
     Column {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: constant.paddingLarge }
+        spacing: constant.paddingLarge
 
         Button {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -78,7 +80,8 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Copy URL"
             onClicked: {
-                QMLUtils.copyToClipboard(url);
+                //QMLUtils.copyToClipboard(url);
+                Clipboard.text = url;
                 infoBanner.alert("URL copied to clipboard");
                 __buttonClickAccept = true;
                 openLinkDialog.accept();

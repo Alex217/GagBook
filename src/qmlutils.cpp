@@ -89,7 +89,6 @@ void QMLUtils::copyToClipboard(const QString &text)
     QClipboard *clipboard = QApplication::clipboard();
 #endif
     clipboard->setText(text, QClipboard::Clipboard);
-    clipboard->setText(text, QClipboard::Selection);
 #ifdef Q_WS_SIMULATOR
     qDebug("Copied to clipboard: %s", qPrintable(text));
 #endif
