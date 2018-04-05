@@ -12,10 +12,10 @@ Name:       harbour-gagbook
 %{!?qtc_qmake5:%define qtc_qmake5 %qmake5}
 %{!?qtc_make:%define qtc_make make}
 %{?qtc_builddir:%define _builddir %qtc_builddir}
-Summary:    An unofficial app for the 9GAG website
-Version:    1.3.2
+Summary:    An unofficial client for the 9GAG.com website
+Version:    1.3.3
 Release:    1
-Group:      Qt/Qt
+Group:      Amusements/Graphics
 License:    BSD
 URL:        https://github.com/Alex217/GagBook
 Source0:    %{name}-%{version}.tar.bz2
@@ -34,7 +34,7 @@ BuildRequires:  pkgconfig(libresourceqt5)
 BuildRequires:  desktop-file-utils
 
 %description
-GagBook is an unofficial mobile app for the 9GAG website that allows you to easily view posts from 9GAG with a simple, smooth and native user interface.
+GagBook is an unofficial client for the 9GAG.com website that allows you to easily view 9GAG posts with a simple, smooth and native user interface.
 
 
 %prep

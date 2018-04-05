@@ -5,6 +5,17 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+* Thu Apr 5 2018 Alexander Seibel <Alex217@t-online.de> 1.3.3-1
+- Fix loading top three comments (loads mobile website)
+- Save downloaded files to '/home/nemo/Downloads/GagBook'
+- Save the mp4-video instead of the image on a manual download
+- Increase maximal image height for better image quality
+- Fix download icons resetting its state
+- Cache long images
+- Rename the cache folder
+- Improve the info banner readability
+- Show corresponding error message if there are no further posts available (e.g. in 'Fresh' section)
+
 * Mon Mar 19 2018 Alexander Seibel <Alex217@t-online.de> 1.3.2-1
 - Fix the access to the 9GAG sections
 
