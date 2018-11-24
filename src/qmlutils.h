@@ -66,11 +66,6 @@ public:
     /*! Share the \p link using Harmattan Share UI. Only available for Harmattan. */
     Q_INVOKABLE void shareLink(const QString &link, const QString &title = QString());
 
-    /*! Open the \p url using Symbian's default browser. Qt.openUrlExternally() in QML
-        does not open the default browser in Symbian and this function is a workaround.
-        On other platform, please use Qt.openUrlExternally(). */
-    Q_INVOKABLE void openDefaultBrowser(const QUrl &url);
-
 private:
     Q_DISABLE_COPY(QMLUtils)
 };
