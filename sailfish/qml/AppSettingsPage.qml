@@ -53,13 +53,11 @@ Page {
                 menu: ContextMenu {
                     MenuItem { text: "9GAG API" }
                     //MenuItem { text: "9GAG website" }
-                    //MenuItem { text: "InfiniGAG" }
                 }
                 onCurrentIndexChanged: {
                     switch (currentIndex) {
                     case 0: appSettings.source = AppSettings.NineGagApiSource; break;
                     //case 1: appSettings.source = AppSettings.NineGagSource; break;
-                    //case 2: appSettings.source = AppSettings.InfiniGagSource; break;
                     }
                 }
             }

@@ -34,7 +34,6 @@
 #include "gagbookmanager.h"
 #include "appsettings.h"
 #include "networkmanager.h"
-#include "infinigagrequest.h"
 #include "ninegagrequest.h"
 #include "ninegagapirequest.h"
 #include "gagimagedownloader.h"
@@ -249,9 +248,6 @@ void GagModel::refresh(RefreshType refreshType)
                 break;
             //case AppSettings::NineGagSource:
                 //m_request = new NineGagRequest(manager()->networkManager(), section, this);
-                //break;
-            //case AppSettings::InfiniGagSource:
-                //m_request = new InfiniGagRequest(manager()->networkManager(), section, this);
                 //break;
         }
 

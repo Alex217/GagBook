@@ -16,7 +16,6 @@ HEADERS += \
     ../src/gagmodel.h \
     ../src/gagobject.h \
     ../src/gagrequest.h \
-    ../src/infinigagrequest.h \
     ../src/ninegagrequest.h \
     ../src/networkmanager.h \
     ../src/gagimagedownloader.h \
@@ -34,7 +33,6 @@ SOURCES += main.cpp \
     ../src/gagmodel.cpp \
     ../src/gagobject.cpp \
     ../src/gagrequest.cpp \
-    ../src/infinigagrequest.cpp \
     ../src/ninegagrequest.cpp \
     ../src/networkmanager.cpp \
     ../src/gagimagedownloader.cpp \
