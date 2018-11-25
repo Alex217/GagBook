@@ -41,10 +41,6 @@ SOURCES += main.cpp \
     ../src/ninegagapirequest.cpp \
     ../src/sectionmodel.cpp
 
-# Qt-Json
-HEADERS += ../qt-json/json.h
-SOURCES += ../qt-json/json.cpp
-
 OTHER_FILES += \
     rpm/$${TARGET}.spec \
     rpm/$${TARGET}.yaml \

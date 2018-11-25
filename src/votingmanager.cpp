@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Bob Jelica
  * Copyright (c) 2014 Dickson Leong
  * All rights reserved.
@@ -30,7 +31,8 @@
 
 #include <QMetaEnum>
 #include <QtNetwork/QNetworkReply>
-#include <../qt-json/json.h>
+#include <QJsonParseError>
+#include <QJsonDocument>
 #include <QDebug>
 
 #include "gagbookmanager.h"
@@ -80,8 +82,14 @@ void VotingManager::vote(const QString &id, VotingManager::VoteType voteType)
 void VotingManager::onReplyFinished()
 {
     if (m_reply->error() == QNetworkReply::NoError) {
-        bool ok;
-        const QVariantMap result = QtJson::parse(QString::fromUtf8(m_reply->readAll()), ok).toMap();
+
+        bool ok = false;
+        QJsonParseError parseError;
+        const QVariant variant = QJsonDocument::fromJson(m_reply->readAll(), &parseError).toVariant();
+        const QVariantMap result = variant.toMap();
+
+        if (parseError.error == QJsonParseError::NoError)
+            ok = true;
 
         Q_ASSERT_X(ok, Q_FUNC_INFO, "Error parsing JSON");
         Q_ASSERT_X(!result.isEmpty(), Q_FUNC_INFO, "Error parsing JSON or JSON is empty");
