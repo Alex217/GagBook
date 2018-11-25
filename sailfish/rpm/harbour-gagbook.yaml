@@ -30,7 +30,6 @@ PkgConfigBR:
   - Qt5Quick
   - Qt5Network
   - Qt5Widgets # not officially supported!
-  - Qt5WebKitWidgets # not officially supported!
   - qdeclarative5-boostable
   - libresourceqt5 # not officially supported yet!
 

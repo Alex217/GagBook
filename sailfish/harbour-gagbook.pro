@@ -2,7 +2,7 @@ TARGET = harbour-gagbook
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\" HAS_LIBRESOURCEQT
 
-QT += network widgets webkitwidgets
+QT += network widgets
 
 CONFIG += sailfishapp c++11 #link_pkgconfig
 PKGCONFIG += libresourceqt5
@@ -16,7 +16,6 @@ HEADERS += \
     ../src/gagmodel.h \
     ../src/gagobject.h \
     ../src/gagrequest.h \
-    ../src/ninegagrequest.h \
     ../src/networkmanager.h \
     ../src/gagimagedownloader.h \
     ../src/gagcookiejar.h \
@@ -33,7 +32,6 @@ SOURCES += main.cpp \
     ../src/gagmodel.cpp \
     ../src/gagobject.cpp \
     ../src/gagrequest.cpp \
-    ../src/ninegagrequest.cpp \
     ../src/networkmanager.cpp \
     ../src/gagimagedownloader.cpp \
     ../src/gagcookiejar.cpp \
