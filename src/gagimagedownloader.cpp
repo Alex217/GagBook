@@ -29,23 +29,14 @@
 #include "gagimagedownloader.h"
 
 #include <QtCore/QDir>
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#include <QtGui/QDesktopServices>
-#else
 #include <QtCore/QStandardPaths>
-#endif
 #include <QtGui/QImageReader>
 #include <QtNetwork/QNetworkReply>
 
 #include "networkmanager.h"
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-static const QString FILE_CACHE_PATH = QDesktopServices::storageLocation(QDesktopServices::CacheLocation)
-        + "/gagbook";
-#else
 static const QString FILE_CACHE_PATH = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
         + "/harbour-gagbook";
-#endif
 
 void GagImageDownloader::initializeCache()
 {

@@ -27,14 +27,11 @@
 
 #include "gagbookmanager.h"
 
-#include <QtCore/QDateTime>
 #include <QtNetwork/QNetworkCookieJar>
 #include <QtNetwork/QNetworkCookie>
 #include <QtNetwork/QNetworkReply>
-
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtCore/QUrlQuery>
-#endif
+#include <QtCore/QDateTime>
 
 #include "networkmanager.h"
 #include "gagimagedownloader.h"
@@ -89,17 +86,10 @@ void GagBookManager::login(const QString &username, const QString &password)
     }
 
     QByteArray postData;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QUrlQuery postDataQuery;
     postDataQuery.addQueryItem("username", username);
     postDataQuery.addQueryItem("password", password);
     postData = postDataQuery.toString(QUrl::FullyEncoded).toUtf8();
-#else
-    QUrl postDataQuery;
-    postDataQuery.addQueryItem("username", username);
-    postDataQuery.addQueryItem("password", password);
-    postData = postDataQuery.encodedQuery();
-#endif
 
     m_loginReply = m_netManager->createPostRequest(QUrl("https://9gag.com/login"), postData);
     connect(m_loginReply, SIGNAL(finished()), SLOT(onLoginFinished()));

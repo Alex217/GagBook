@@ -29,20 +29,11 @@
 #include "qmlutils.h"
 
 #include <QImage>
-#include <QtCore/QFile>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
 #include <QtGui/QClipboard>
-#include <QtQml/QQmlEngine>
-#include <QtQuick/QQuickView>
-#include <QtGui/QDesktopServices>
-
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtCore/QStandardPaths>
 #include <QtGui/QGuiApplication>
-#else
-#include <QtGui/QDesktopServices>
-#include <QtGui/QApplication>
-#endif
 
 QMLUtils::QMLUtils(QObject *parent) :
     QObject(parent)
@@ -52,7 +43,7 @@ QMLUtils::QMLUtils(QObject *parent) :
 int QMLUtils::imageMaxHeight() const
 {
     return 4096;
-    // macro seems to be not working, gives the value 3379 for different devices
+    // TODO: macro seems to be not working, gives the value 3379 for different devices
     //return GL_MAX_TEXTURE_SIZE;
 }
 
@@ -63,12 +54,9 @@ QUrl QMLUtils::repoWebsite() const
 
 void QMLUtils::copyToClipboard(const QString &text)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QClipboard *clipboard = QGuiApplication::clipboard();
-#else
-    QClipboard *clipboard = QApplication::clipboard();
-#endif
     clipboard->setText(text, QClipboard::Clipboard);
+
 #ifdef Q_WS_SIMULATOR
     qDebug("Copied to clipboard: %s", qPrintable(text));
 #endif
@@ -81,11 +69,8 @@ QString QMLUtils::saveImage(const QUrl &imageUrl, bool isLongImage)
         return QString("");
 
     // create the image saving directory if not existent
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    QDir fileSavingDir(QDesktopServices::storageLocation(QDesktopServices::PicturesLocation));
-#else
     QDir fileSavingDir(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/GagBook");
-#endif
+
     if (!fileSavingDir.exists())
         fileSavingDir.mkpath(".");
 

@@ -30,15 +30,7 @@
 #define GAGMODEL_H
 
 #include <QtCore/QAbstractListModel>
-
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
-  #include <QtQml/QQmlParserStatus>
-  #define DECL_QMLPARSERSTATUS_INTERFACE Q_INTERFACES(QQmlParserStatus)
-#else
-  #include <QtDeclarative/QDeclarativeParserStatus>
-  #define QQmlParserStatus QDeclarativeParserStatus
-  #define DECL_QMLPARSERSTATUS_INTERFACE Q_INTERFACES(QDeclarativeParserStatus)
-#endif
+#include <QtQml/QQmlParserStatus>
 
 #include "gagobject.h"
 
@@ -51,7 +43,7 @@ class GagImageDownloader;
 class GagModel : public QAbstractListModel, public QQmlParserStatus
 {
     Q_OBJECT
-    DECL_QMLPARSERSTATUS_INTERFACE
+    Q_INTERFACES(QQmlParserStatus)
     Q_ENUMS(RefreshType)
 
     /*! True if there is an active refresh request. Busy visual feedback should be shown to

@@ -34,7 +34,6 @@
 #include "gagbookmanager.h"
 #include "appsettings.h"
 #include "networkmanager.h"
-#include "ninegagrequest.h"
 #include "ninegagapirequest.h"
 #include "gagimagedownloader.h"
 #include "sectionmodel.h"
@@ -60,9 +59,6 @@ GagModel::GagModel(QObject *parent) :
     _roles[IsPartialImageRole] = "isPartialImage";
     _roles[SavedFileUrlRole] = "savedFileUrl";
     _roles[IsDownloadingRole] = "isDownloading";
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    setRoleNames(_roles);
-#endif
 }
 
 void GagModel::classBegin()
