@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -25,20 +26,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <QApplication>
+#ifdef QT_QML_DEBUG
+#include <QtQuick>
+#endif
+
+#include <sailfishapp.h>
+
+#include <QGuiApplication>
 #include <QQuickView>
-#include <QQmlContext>
-#include <QtQml/qqml.h> // qmlRegisterType
 
-#include "sailfishapp.h"
-
-#include "src/gagbookmanager.h"
-#include "src/gagmodel.h"
-#include "src/qmlutils.h"
-#include "src/networkmanager.h"
-#include "src/appsettings.h"
-#include "src/volumekeylistener.h"
-#include "src/votingmanager.h"
+#include "../src/gagbookmanager.h"
+#include "../src/gagmodel.h"
+#include "../src/qmlutils.h"
+#include "../src/networkmanager.h"
+#include "../src/appsettings.h"
+#include "../src/volumekeylistener.h"
+#include "../src/votingmanager.h"
 #include "../src/sectionmodel.h"
 
 Q_DECL_EXPORT int main(int argc, char *argv[])
@@ -54,16 +57,16 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
 
     //return SailfishApp::main(argc, argv);
 
-    QApplication app(argc, argv);
-
-    app.setApplicationDisplayName("GagBook");
-    app.setApplicationName("harbour-gagbook");
-    app.setOrganizationName("harbour-gagbook");
-    app.setOrganizationDomain("harbour-gagbook");
-    app.setApplicationVersion(APP_VERSION);
+    QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
+    app->setApplicationDisplayName("GagBook");
+    app->setApplicationName("harbour-gagbook");
+    app->setOrganizationName("harbour-gagbook");
+    app->setOrganizationDomain("harbour-gagbook");
+    app->setApplicationVersion(APP_VERSION);
 
     QScopedPointer<QQuickView> view(SailfishApp::createView());
     view->rootContext()->setContextProperty("APP_VERSION", APP_VERSION);
+    view->setTitle("GagBook");
 
     QMLUtils qmlUtils;
     view->rootContext()->setContextProperty("QMLUtils", &qmlUtils);
@@ -76,13 +79,12 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
     qmlRegisterType<GagModel>("harbour.gagbook.Core", 1, 0, "GagModel");
     qmlRegisterType<AppSettings>("harbour.gagbook.Core", 1, 0, "AppSettings");
     qmlRegisterType<VotingManager>("harbour.gagbook.Core", 1, 0, "VotingManager");
-
     qmlRegisterUncreatableType<SectionModel>("harbour.gagbook.Core", 1, 0, "SectionModel",
                                              "SectionModel should not be created in QML!");
     qRegisterMetaType<SectionModel*>("SectionModel*");
 
-    view->setSource(SailfishApp::pathTo("qml/main.qml"));
-    view->show();
+    view->setSource(SailfishApp::pathTo(QString("qml/main.qml")));
+    view->showFullScreen();
 
-    return app.exec();
+    return app->exec();
 }

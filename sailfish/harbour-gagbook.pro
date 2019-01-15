@@ -2,7 +2,7 @@ TARGET = harbour-gagbook
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\" HAS_LIBRESOURCEQT
 
-QT += network widgets
+QT += core qml quick network
 
 CONFIG += sailfishapp c++11 #link_pkgconfig
 PKGCONFIG += libresourceqt5

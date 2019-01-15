@@ -29,7 +29,6 @@ PkgConfigBR:
   - Qt5Qml
   - Qt5Quick
   - Qt5Network
-  - Qt5Widgets # not officially supported!
   - qdeclarative5-boostable
   - libresourceqt5 # not officially supported yet!
 
