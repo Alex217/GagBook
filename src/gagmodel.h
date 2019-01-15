@@ -44,7 +44,6 @@ class GagModel : public QAbstractListModel, public QQmlParserStatus
 {
     Q_OBJECT
     Q_INTERFACES(QQmlParserStatus)
-    Q_ENUMS(RefreshType)
 
     /*! True if there is an active refresh request. Busy visual feedback should be shown to
         the user and the refresh option should be disabled. */
@@ -88,6 +87,8 @@ public:
         RefreshAll,
         RefreshOlder
     };
+
+    Q_ENUM(RefreshType)
 
     explicit GagModel(QObject *parent = 0);
 

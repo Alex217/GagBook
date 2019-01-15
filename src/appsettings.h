@@ -46,7 +46,6 @@ class QSettings;
 class AppSettings : public QObject
 {
     Q_OBJECT
-    Q_ENUMS(Source)
 
     /*! True if user logged in to 9GAG account. */
     Q_PROPERTY(bool loggedIn READ isLoggedIn WRITE setLoggedIn NOTIFY loggedInChanged)
@@ -55,7 +54,7 @@ class AppSettings : public QObject
         Only usable for Harmattan and Symbian. */
     Q_PROPERTY(bool whiteTheme READ isWhiteTheme WRITE setWhiteTheme NOTIFY whiteThemeChanged)
 
-    /*! Specify which source to use to get the gags. Default is NineGagSource. */
+    /*! Specify which source to use to get the gags. */
     Q_PROPERTY(Source source READ source WRITE setSource NOTIFY sourceChanged)
 
     /*! True if scroll with volume keys is enabled. Default is false. */
@@ -70,8 +69,10 @@ class AppSettings : public QObject
 public:
     enum Source {
         NineGagApiSource, //!< Use undisclosed official 9GAG API to fetch JSON data. \sa NineGagApiRequest
-        //NineGagSource, //!< Use 9GAG website scraping method (preferred). \sa NineGagRequest
+        //NineGagSource, //!< Use 9GAG website scraping method.
     };
+
+    Q_ENUM(Source)
 
     explicit AppSettings(QObject *parent = 0);
 

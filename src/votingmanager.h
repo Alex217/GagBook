@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Bob Jelica
  * Copyright (c) 2014 Dickson Leong
  * All rights reserved.
@@ -38,7 +39,6 @@ class GagBookManager;
 class VotingManager : public QObject
 {
     Q_OBJECT
-    Q_ENUMS(VoteType)
 
     /*! True if there is active network request. Voting should be disable when busy. */
     Q_PROPERTY(bool busy READ isBusy NOTIFY busyChanged)
@@ -54,6 +54,8 @@ public:
         Unlike,
         Dislike
     };
+
+    Q_ENUM(VoteType)
 
     bool isBusy() const;
 
