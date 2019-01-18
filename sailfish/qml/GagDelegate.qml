@@ -26,11 +26,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import QtQuick 2.0
+import QtQuick 2.2
 import Sailfish.Silica 1.0
 import harbour.gagbook.Core 1.0
 
 Item {
+    // TODO remove this property in future and directly use new icon
+    property bool newCommentsIconExists: true
+
     id: gagDelegate
     width: ListView.view.width
     height: mainColumn.height + separator.height
@@ -41,6 +44,7 @@ Item {
         height: childrenRect.height
         spacing: Theme.paddingMedium
 
+        // Title
         Text {
             anchors { left: parent.left; right: parent.right; margins: Theme.paddingMedium }
             font.pixelSize: Theme.fontSizeMedium
@@ -50,6 +54,7 @@ Item {
             text: model.title
         }
 
+        // Points & comments
         Text {
             anchors { left: parent.left; right: parent.right; margins: Theme.paddingMedium }
             font.pixelSize: Theme.fontSizeSmall
@@ -57,6 +62,7 @@ Item {
             text: model.votesCount + " points · " + model.commentsCount + " comments"
         }
 
+        // Loads corresponding gag content
         Loader {
             id: gagImageLoader
 
@@ -100,7 +106,7 @@ Item {
                     smooth: !gagDelegate.ListView.view.moving
                     cache: false
                     // pause the animation when app is in background
-                    paused: mainPage.status != PageStatus.Active || !Qt.application.active
+                    paused: mainPage.status !== PageStatus.Active || !Qt.application.active
                     fillMode: Image.PreserveAspectFit
                     source: model.gifImageUrl
                 }
@@ -123,13 +129,14 @@ Item {
                         return errorText;
                     case Image.Ready:
                         if (model.isVideo && !gagImageLoader.playVideo || model.isGIF && !gagImageLoader.playGif)
-                            return gifPlayIcon;
+                            return videoPlayIcon;
                         if (model.isPartialImage)
                             return partialImageBar;
                         return undefined;
                     }
                 }
 
+                // Placeholder for sensitive content (NSFW/NFK)
                 Component {
                     id: nsfwText
 
@@ -149,7 +156,7 @@ Item {
                                 color: Theme.primaryColor
                                 font.bold: true
                                 wrapMode: Text.Wrap
-                                text: "Not Safe For Work"
+                                text: "Sensitive Content"
                             }
 
                             Text {
@@ -158,9 +165,9 @@ Item {
                                 font.pixelSize: Theme.fontSizeMedium
                                 color: Theme.primaryColor
                                 wrapMode: Text.Wrap
-                                text: appSettings.loggedIn ? "You need to enable showing of NSFW posts " +
-                                                             "for your account at 9GAG website."
-                                                           : "You need to login to view NSFW images."
+                                text: appSettings.loggedIn ? "You need to enable showing of sensitive content " +
+                                                             "in your account settings first."
+                                                           : "You need to login to view sensitive content."
                             }
                         }
                     }
@@ -239,11 +246,11 @@ Item {
                 }
 
                 Component {
-                    id: gifPlayIcon
+                    id: videoPlayIcon
                     Item {
                         Image {
                             anchors.centerIn: parent
-                            source: "Images/icon-gif-play.png"
+                            source: "image://theme/icon-video-overlay-play"
                         }
                     }
                 }
@@ -255,11 +262,14 @@ Item {
                         Rectangle {
                             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                             height: Theme.itemSizeSmall
-                            color: "LightSlateGray"
+                            color: gagMouseArea.highlighted ? Theme.highlightBackgroundColor
+                                                            : Theme.highlightColor
 
                             Label {
                                 anchors.centerIn: parent
                                 font.pixelSize: constant.fontSizeSmall
+                                color: gagMouseArea.highlighted ? Theme.highlightColor : Theme.primaryColor
+                                wrapMode: Text.Wrap
                                 text: "Show the entire image"
                             }
                         }
@@ -268,6 +278,10 @@ Item {
             }
 
             MouseArea {
+                id: gagMouseArea
+
+                property bool highlighted: pressed && containsMouse
+
                 anchors.fill: parent
                 enabled: !model.isNSFW && !model.isDownloading
                 onClicked: {
@@ -303,31 +317,35 @@ Item {
         }
 
         Row {
-            anchors { left:parent.left; right:parent.right; margins: Theme.paddingMedium }
+            anchors { horizontalCenter: parent.horizontalCenter; margins: Theme.paddingMedium }
             height: childrenRect.height
             spacing: constant.paddingMedium
 
             IconButton {
                 enabled: appSettings.loggedIn && !votingManager.busy
+                icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
                 icon.source: "image://theme/icon-m-up"
                 highlighted: model.likes === 1
                 onClicked: votingManager.vote(model.id, highlighted ? VotingManager.Unlike : VotingManager.Like);
             }
             IconButton {
                 enabled: appSettings.loggedIn && !votingManager.busy
+                icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
                 icon.source: "image://theme/icon-m-down"
                 highlighted: model.likes === -1
                 onClicked: votingManager.vote(model.id, highlighted ? VotingManager.Unlike : VotingManager.Dislike);
             }
             IconButton {
                 icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
-                icon.source: "image://theme/icon-m-message"
+                icon.source: newCommentsIconExists ? "image://theme/icon-m-outline-chat" : "image://theme/icon-m-message"
                 onClicked: pageStack.push(Qt.resolvedUrl("CommentsPage.qml"), { gagURL: model.url })
             }
             IconButton {
                 icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
-                icon.source: "image://theme/icon-lock-social"
-                onClicked: pageStack.push(Qt.resolvedUrl("OpenLinkDialog.qml"), { url: model.url });
+                icon.source: "image://theme/icon-m-link"
+                onClicked: pageStack.push(Qt.resolvedUrl("OpenLinkDialog.qml"), {
+                                              url: QMLUtils.toMobileUrl(model.url)
+                                          });
             }
             /* Sailfish does not has (public) sharing API yet
             IconButton {
@@ -386,7 +404,7 @@ Item {
 
     Separator {
         id: separator
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; }
         color: Theme.secondaryColor
     }
 

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -25,7 +26,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import QtQuick 2.0
+import QtQuick 2.2
 import Sailfish.Silica 1.0
 import harbour.gagbook.Core 1.0
 
@@ -49,6 +50,23 @@ Page {
         if (status == PageStatus.Active && !__pushedAttached) {
             pageStack.pushAttached(Qt.resolvedUrl("SectionPage.qml"), { gagModel: gagModel });
             __pushedAttached = true;
+        }
+    }
+
+    property bool newCommentsIconExists
+
+    Image {
+        /* TODO Remove this later if the minimal required SFOS version has been increased to >= 2.2.0
+         *
+         * This checks for the existence of the new icon. This is a workaround to resolve the icon URL
+         * and to prevent errors being printed by loading the (non existent) icon in each GagDelegate.
+         */
+        opacity: 0
+        visible: false
+        enabled: false
+        source: "image://theme/icon-m-outline-chat" // this icon is available since SFOS 2.2.0.29
+        onStatusChanged: {
+            newCommentsIconExists = (status === Image.Ready)
         }
     }
 
@@ -76,7 +94,7 @@ Page {
 
         header: PageHeader { title: "/" + appSettings.sections.getSection(gagModel.selectedSection).name }
 
-        delegate: GagDelegate {}
+        delegate: GagDelegate { newCommentsIconExists: mainPage.newCommentsIconExists }
 
         footer: Item {
             width: parent.width
