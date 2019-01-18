@@ -101,14 +101,66 @@ QString QMLUtils::saveImage(const QUrl &imageUrl, bool isLongImage)
     return ((success || QFile::exists(copyPath)) ? QUrl::fromLocalFile(copyPath).toString() : QString(""));
 }
 
-bool QMLUtils::fileExists(const QString &fileName)
+bool QMLUtils::fileExists(const QUrl &url)
 {
-    if (QFile::exists(QUrl(fileName).toLocalFile())) {
-        return true;
+    return QFile::exists(url.toLocalFile());
+}
+
+/*!
+ * \brief QMLUtils::toMobileUrl Utility method to convert a given URL to the mobile URL.
+ * \param url The URL which should be converted to the mobile version. Note that the
+ *  input URL at least has to contain the substring 'http://'.
+ * \param convertToHttps Set this to true to convert a HTTP link to a HTTPS link.
+ * \return Returns the mobile representation of the given URL. If the URL is wrongly
+ *  formatted the passed URL will be returned.
+ */
+QUrl QMLUtils::toMobileUrl(const QUrl &url, bool convertToHttps)
+{
+    QString urlStr = url.toString();
+    int colonPos = urlStr.indexOf(":");
+
+    if (colonPos == -1) {
+        qWarning("QMLUtils::toMobileUrl(): Wrongly formatted input URL!");
+        return url;
     }
-    else {
-        return false;
+
+    urlStr = urlStr.insert(colonPos + 3, QString("m."));
+
+    if (convertToHttps && (urlStr.at(colonPos - 1) == QChar('p'))) {
+        urlStr = urlStr.insert(colonPos, QString("s"));
     }
+
+    return QUrl(urlStr);
+}
+
+/*!
+ * \brief QMLUtils::fromMobileUrl Utility method to convert a given URL from the mobile
+ *  representation to the desktop URL.
+ * \param url The URL which should be converted to the desktop version. Note that the
+ *  input URL at least has to contain the substring 'http://'.
+ * \param convertToHttps Set this to true to convert a HTTP link to a HTTPS link.
+ * \return Returns the desktop representation of the given URL. If the URL is wrongly
+ *  formatted the passed URL will be returned.
+ */
+QUrl QMLUtils::fromMobileUrl(const QUrl &url, bool convertToHttps)
+{
+    QString urlStr = url.toString();
+    int colonPos = urlStr.indexOf(":");
+
+    if (colonPos == -1) {
+        qWarning("QMLUtils::fromMobileUrl(): Wrongly formatted input URL!");
+        return url;
+    }
+
+    if (urlStr.at(colonPos + 3) == QChar('m')) {
+        urlStr = urlStr.remove(colonPos + 3, 2);
+    }
+
+    if (convertToHttps && (urlStr.at(colonPos - 1) == QChar('p'))) {
+        urlStr = urlStr.insert(colonPos, QString("s"));
+    }
+
+    return QUrl(urlStr);
 }
 
 void QMLUtils::shareLink(const QString &link, const QString &title)

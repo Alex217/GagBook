@@ -31,7 +31,6 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QVariant>
-#include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
 
 /*! Utilities functions for QML
@@ -59,11 +58,14 @@ public:
       long image so that it will be scaled down to a supported size. */
     Q_INVOKABLE QString saveImage(const QUrl &imageUrl, bool isLongImage = false);
 
-    /*! Checks if the file with the given \param fileName url exists.
+    /*! Checks if the file with the given \param url exists.
      * \return Returns true if the file exists. */
-    Q_INVOKABLE bool fileExists(const QString &fileName);
+    Q_INVOKABLE bool fileExists(const QUrl &url);
 
-    /*! Share the \p link using Harmattan Share UI. Only available for Harmattan. */
+    Q_INVOKABLE QUrl toMobileUrl(const QUrl &url, bool convertToHttps = true);
+    Q_INVOKABLE QUrl fromMobileUrl(const QUrl &url, bool convertToHttps = true);
+
+    /*! Share the given link. */
     Q_INVOKABLE void shareLink(const QString &link, const QString &title = QString());
 
 private:

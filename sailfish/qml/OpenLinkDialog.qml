@@ -26,13 +26,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import QtQuick 2.0
+import QtQuick 2.2
 import Sailfish.Silica 1.0
 
 Dialog {
     id: openLinkDialog
 
-    property string url
+    property url url
 
     property bool __buttonClickAccept: false
 
@@ -80,7 +80,6 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Copy URL"
             onClicked: {
-                //QMLUtils.copyToClipboard(url);
                 Clipboard.text = url;
                 infoBanner.alert("URL copied to clipboard");
                 __buttonClickAccept = true;
