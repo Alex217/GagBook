@@ -28,33 +28,24 @@
 #ifndef NINEGAGAPIREQUEST_H
 #define NINEGAGAPIREQUEST_H
 
+#include <QNetworkReply>
+
 #include "gagrequest.h"
+#include "networkmanager.h"
 #include "ninegagapiclient.h"
 
-/*!
- * \brief The NineGagApiRequest class accesses the 9GAG API via the NineGagApiClient and parses the response to
- *        a list of gags. \sa NineGagApiClient
- */
 class NineGagApiRequest : public GagRequest
 {
     Q_OBJECT
 
 public:
-    /*!
-     * \brief NineGagApiRequest Constructor.
-     * \param networkManager Pointer to the global NetworkManager instance.
-     * \param groupId The id to select between the different 9GAG sections/groups.
-     * \param section Specifies the 9GAG section from which the gags should be fetched.
-     * \param parent The parent object.
-     */
-    explicit NineGagApiRequest(NetworkManager *networkManager, const int groupId, const QString &section,
-                               QObject *parent = 0);
+    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
     ~NineGagApiRequest();
 
 protected:
-    void startRequest();
-    QNetworkReply *createRequest(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseResponse(const QByteArray &response);
+    void startGagsRequest();
+    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
+    QList<GagObject> parseGags(const QByteArray &response);
 
 private slots:
     void onLogin();

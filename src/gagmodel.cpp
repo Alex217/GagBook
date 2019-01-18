@@ -34,13 +34,14 @@
 #include "gagbookmanager.h"
 #include "appsettings.h"
 #include "networkmanager.h"
-#include "ninegagapirequest.h"
+#include "gagrequest.h"
 #include "gagimagedownloader.h"
 #include "sectionmodel.h"
 
 GagModel::GagModel(QObject *parent) :
-    QAbstractListModel(parent), m_busy(false), m_progress(0), m_manualProgress(0), m_manager(0),
-    m_selectedSection(0), m_request(0), m_imageDownloader(0), m_manualImageDownloader(0), m_downloadingIndex(-1)
+    QAbstractListModel(parent), m_groupId(1), m_section(QString()), m_lastId(QString()),
+    m_selectedSection(0), m_busy(false), m_progress(0), m_manualProgress(0), m_manager(0),
+    m_imageDownloader(0), m_manualImageDownloader(0), m_downloadingIndex(-1)
 {
     _roles[TitleRole] = "title";
     _roles[IdRole] = "id";
@@ -221,36 +222,25 @@ void GagModel::refresh(RefreshType refreshType)
         m_imageDownloader = 0;
     }
 
-    if (refreshType == RefreshAll) {
-
-        if (m_request != 0) {
-            m_request->disconnect();
-            m_request->deleteLater();
-            m_request = 0;
-        }
-
-        SectionModel *sections = m_manager->settings()->sections();
-        const QString section = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
-                                               SectionModel::SectionRoles::UrlPathRole).toString();
-
-        switch (m_manager->settings()->source()) {
-            default:
-                qWarning("GagModel::refresh(): Invalid source, default source will be used.");
-                // fallthrough
-            case AppSettings::NineGagApiSource:
-                const int groupId = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
-                                                   SectionModel::SectionRoles::GroupIdRole).toInt();
-                m_request = new NineGagApiRequest(manager()->networkManager(), groupId, section, this);
-                break;
-            //case AppSettings::NineGagSource:
-                //m_request = new NineGagRequest(manager()->networkManager(), section, this);
-                //break;
-        }
-
-        connect(m_request, SIGNAL(readyToRequest()), this, SLOT(startRequest()), Qt::UniqueConnection);
+    if (m_manager == 0) {
+        qWarning("GagModel::refresh(): Error! GagBookManager has not been set yet!");
+        return;
     }
 
-    Q_ASSERT(m_request != 0);
+    if (refreshType == RefreshAll) {
+
+        SectionModel *sections = m_manager->settings()->sections();
+        m_groupId = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
+                                           SectionModel::SectionRoles::GroupIdRole).toInt();
+
+        m_section = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
+                                               SectionModel::SectionRoles::UrlPathRole).toString();
+
+        m_lastId = QString();
+
+        connect(m_manager->gagRequest(), SIGNAL(readyToRequestGags()), this, SLOT(startRequest()),
+                Qt::UniqueConnection);
+    }
 
     if (!m_gagList.isEmpty()) {
         if (refreshType == RefreshAll) {
@@ -258,20 +248,15 @@ void GagModel::refresh(RefreshType refreshType)
             m_gagList.clear();
             endRemoveRows();
         } else {
-            m_request->setLastId(m_gagList.last().id());
+            m_lastId = m_gagList.last().id();
         }
     }
 
-    m_request->initiateRequest();
+    m_manager->gagRequest()->initiateGagsRequest();
 }
 
 void GagModel::stopRefresh()
 {
-    if (m_request != 0) {
-        m_request->disconnect();
-        m_request->deleteLater();
-        m_request = 0;
-    }
     if (m_imageDownloader != 0)
         m_imageDownloader->stop();
 
@@ -333,11 +318,24 @@ void GagModel::changeLikes(const QString &id, int likes)
 
 void GagModel::startRequest()
 {
-    connect(m_request, SIGNAL(success(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)),
-            Qt::UniqueConnection);
-    connect(m_request, SIGNAL(failure(QString)), this, SLOT(onFailure(QString)), Qt::UniqueConnection);
+    GagRequest *gagReq = m_manager->gagRequest();
 
-    m_request->send();
+    connect(gagReq, SIGNAL(fetchGagsSuccess(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)),
+            Qt::UniqueConnection);
+    connect(gagReq, SIGNAL(fetchGagsFailure(QString)), this, SLOT(onFailure(QString)), Qt::UniqueConnection);
+    connect(gagReq, &GagRequest::reachedEndOfList, this, &GagModel::onEndOfList, Qt::UniqueConnection);
+
+    gagReq->fetchGags(m_groupId, m_section, m_lastId);
+}
+
+void GagModel::onEndOfList()
+{
+    emit refreshFailure("Reached end of the list. There are no further posts available");
+
+    if (m_busy != false) {
+        m_busy = false;
+        emit busyChanged();
+    }
 }
 
 void GagModel::onSuccess(const QList<GagObject> &gagList)
@@ -355,14 +353,6 @@ void GagModel::onSuccess(const QList<GagObject> &gagList)
 void GagModel::onFailure(const QString &errorMessage)
 {
     emit refreshFailure(errorMessage);
-
-    Q_ASSERT(m_request != 0);
-
-   if (m_gagList.isEmpty()) {
-        m_request->disconnect();
-        m_request->deleteLater();
-        m_request = 0;
-   }
 
     if (m_busy != false) {
         m_busy = false;

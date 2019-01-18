@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -36,10 +37,11 @@
 #include "networkmanager.h"
 #include "gagimagedownloader.h"
 #include "appsettings.h"
+#include "ninegagapirequest.h"
 
 GagBookManager::GagBookManager(QObject *parent) :
     QObject(parent), m_isBusy(false), m_settings(0),
-    m_netManager(new NetworkManager(this)), m_loginReply(0)
+    m_netManager(new NetworkManager(this)), m_loginReply(0), m_gagRequest(0)
 {
     GagImageDownloader::initializeCache();
     connect(m_netManager, SIGNAL(downloadCounterChanged()), SIGNAL(downloadCounterChanged()));
@@ -100,6 +102,30 @@ void GagBookManager::logout()
     //we log out by removing the loggedin cookie
     m_netManager->clearCookies();
     m_settings->setLoggedIn(false);
+}
+
+GagRequest *GagBookManager::gagRequest()
+{
+    initGagRequest();
+
+    Q_ASSERT(m_gagRequest != 0);
+    return m_gagRequest;
+}
+
+void GagBookManager::initGagRequest()
+{
+    if (m_gagRequest == 0) {
+
+        // TODO: add and connect slot to change gagRequest object on changed GagSource!
+        switch (m_settings->source()) {
+            default:
+                qWarning("GagBookManager::GagBookManager(): Invalid source, default source will be used.");
+                // fallthrough
+            case AppSettings::NineGagApiSource:
+                m_gagRequest = new NineGagApiRequest(m_netManager, this);
+                break;
+        }
+    }
 }
 
 void GagBookManager::onLoginFinished()

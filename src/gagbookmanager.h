@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2018 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -30,6 +31,8 @@
 
 #include <QtCore/QObject>
 
+#include "gagrequest.h"
+
 class NetworkManager;
 class AppSettings;
 class QNetworkReply;
@@ -54,6 +57,7 @@ class GagBookManager : public QObject
     /*! The global instance of AppSettings. Must be set before component completed and
         can not be change afterward. */
     Q_PROPERTY(AppSettings *settings READ settings WRITE setSettings)
+
 public:
     explicit GagBookManager(QObject *parent = 0);
 
@@ -74,6 +78,11 @@ public:
     /*! Logout from 9GAG account. */
     Q_INVOKABLE void logout();
 
+    GagRequest *gagRequest();
+
+private:
+    void initGagRequest();
+
 signals:
     void busyChanged();
     void downloadCounterChanged();
@@ -93,6 +102,7 @@ private:
     AppSettings *m_settings;
     NetworkManager *m_netManager;
     QNetworkReply *m_loginReply;
+    GagRequest *m_gagRequest;
 };
 
 #endif // GAGBOOKMANAGER_H

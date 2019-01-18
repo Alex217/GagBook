@@ -28,78 +28,91 @@
 
 #include "gagrequest.h"
 
-#include <QtNetwork/QNetworkReply>
+/*!
+    \class GagRequest
+    \since 0.9.0
+    \brief The GagRequest class handles all network requests to download the required data.
 
-#include "networkmanager.h"
+    GagRequest handles all network requests to download the required data (e.g. a list of gags).
+    This is an abstract class that encapsulates a request to download the data.
+    This can be a subclass to support different ways of getting gags.
 
-GagRequest::GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(-1), m_section(section),
-    m_noMorePosts(false)
+    \sa NineGagApiRequest
+*/
+
+/*!
+ * \brief GagRequest::GagRequest Constructor.
+ * \param networkManager Pointer to the global NetworkManager instance.
+ * \param parent Parent QObject.
+ */
+GagRequest::GagRequest(NetworkManager *networkManager, QObject *parent) :
+    QObject(parent), m_networkManager(networkManager), m_gagsReply(0)
 {
 }
 
-GagRequest::GagRequest(NetworkManager *networkManager, const int groupId, const QString &section,
-                       QObject *parent)
-    : QObject(parent), m_networkManager(networkManager), m_reply(0), m_groupId(groupId), m_section(section),
-      m_noMorePosts(false)
+/*!
+ * \brief GagRequest::initiateGagsRequest Initiates the request for fetching the gags.
+ */
+void GagRequest::initiateGagsRequest()
 {
+    startGagsRequest();
 }
 
-void GagRequest::setLastId(const QString &lastId)
+/*!
+ * \brief GagRequest::fetchGags Initiates the request to fetch the gags.
+ * \param groupId The id to select between the different sections/groups.
+ * \param section Specifies the current section, e.g. 'hot'.
+ * \param lastId The id of the last gag/post. If this is set, the retrieved
+ *  gags are older than the last gag (pagination).
+ */
+void GagRequest::fetchGags(int groupId, QString &section, QString &lastId)
 {
-    m_lastId = lastId;
-}
+    // TODO catch the corner case where the request is still active (if the finished slot has not been called yet)
+    Q_ASSERT(m_gagsReply == 0);
 
-void GagRequest::setNoMorePosts(bool noMorePosts)
-{
-    m_noMorePosts = noMorePosts;
-    // ToDo: emit signal/change state in corresponding view
-}
-
-void GagRequest::initiateRequest()
-{
-    startRequest();
-}
-
-void GagRequest::send()
-{
-    Q_ASSERT(m_reply == 0);
-
-    m_reply = createRequest(m_groupId, m_section, m_lastId);
+    m_gagsReply = fetchGagsImpl(groupId, section, lastId);
 
     // make sure the QNetworkReply will be destroyed when this object is destroyed
-    m_reply->setParent(this);
-    connect(m_reply, SIGNAL(finished()), this, SLOT(onFinished()), Qt::UniqueConnection);
+    m_gagsReply->setParent(this);
+    connect(m_gagsReply, SIGNAL(finished()), this, SLOT(onFetchGagsFinished()), Qt::UniqueConnection);
 }
 
-void GagRequest::onFinished()
+/*!
+ * \brief GagRequest::onFetchGagsFinished Slot to process the QNetworkReply after fetching the posts.
+ */
+void GagRequest::onFetchGagsFinished()
 {
-    if (m_reply->error()) {
-        qDebug() << "QNetworkReply error: " << m_reply->error() << "\nQNetworkReply object: " << m_reply->readAll();
-        QString errorStr = m_reply->errorString();
-        m_reply->disconnect();
-        m_reply->deleteLater();
-        m_reply = 0;
-        emit failure(errorStr);
+    if (m_gagsReply->error()) {
+        qDebug() << "QNetworkReply error: " << m_gagsReply->error()
+                 << "\nQNetworkReply object: " << m_gagsReply->readAll();
+        QString errorStr = m_gagsReply->errorString();
+        m_gagsReply->disconnect();
+        m_gagsReply->deleteLater();
+        m_gagsReply = 0;
+        emit fetchGagsFailure(errorStr);
         return;
     }
 
-    QByteArray response = m_reply->readAll();
-    m_reply->disconnect();
-    m_reply->deleteLater();
-    m_reply = 0;
+    QByteArray response = m_gagsReply->readAll();
+    m_gagsReply->disconnect();
+    m_gagsReply->deleteLater();
+    m_gagsReply = 0;
 
-    m_gagList = parseResponse(response);
+    m_gagList = parseGags(response);
+
+    // TODO improve the error handling (e.g. to differentiate between parsing errors and endOfList)
     if (m_gagList.isEmpty()) {
-        if (m_noMorePosts)
-            emit failure("Reached end of the list. There are no further posts available");
-        else
-            emit failure("Unable to parse response");
+        //emit fetchGagsFailure("Unable to parse response");
+        return; // assume that NineGagApiRequest emitted 'reachedEndOfList()'
     }
     else
-        emit success(m_gagList);
+        emit fetchGagsSuccess(m_gagList);
 }
 
+/*!
+ * \brief GagRequest::networkManager Getter for retrieving the global NetworkManager instance.
+ * \return Returns the pointer to the global NetworkManager instance.
+ */
 NetworkManager *GagRequest::networkManager() const
 {
     return m_networkManager;

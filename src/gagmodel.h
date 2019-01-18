@@ -35,7 +35,6 @@
 #include "gagobject.h"
 
 class GagBookManager;
-class GagRequest;
 class GagImageDownloader;
 
 /*! \brief The GagModel class subclasses QAbstractListModel and contains the GagObjects. This list
@@ -132,6 +131,7 @@ signals:
 
 private slots:
     void startRequest();
+    void onEndOfList();
     void onSuccess(const QList<GagObject> &gagList);
     void onFailure(const QString &errorMessage);
     void onDownloadProgress(qint64 downloaded, qint64 total);
@@ -140,15 +140,17 @@ private slots:
     void onManualDownloadFinished();
 
 private:
+    int m_groupId;
+    QString m_section;
+    QString m_lastId;
+    int m_selectedSection;
     bool m_busy;
     qreal m_progress;
     qreal m_manualProgress;
     GagBookManager *m_manager;
-    int m_selectedSection;
 
     QHash<int, QByteArray> _roles;
     QList<GagObject> m_gagList;
-    GagRequest *m_request;
     GagImageDownloader *m_imageDownloader;
     GagImageDownloader *m_manualImageDownloader;
     int m_downloadingIndex;

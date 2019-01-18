@@ -29,91 +29,72 @@
 #ifndef GAGREQUEST_H
 #define GAGREQUEST_H
 
+#include <QtNetwork/QNetworkReply>
 #include <QtCore/QObject>
 #include <QtCore/QList>
 
+#include "networkmanager.h"
 #include "gagobject.h"
 #include "gagmodel.h"
 
-class NetworkManager;
-class QNetworkReply;
-
-/*! GagRequest downloads a list of gags.
-
-    An abstract class that encapsulates a request to download a list of gags. This can be
-    a subclass to support different ways of getting gags.
-
-    \sa NineGagApiRequest, NineGagRequest
- */
 class GagRequest : public QObject
 {
     Q_OBJECT
+
 public:
-    /*! Constructor. \p section Specifies from which 9GAG section to get the gags, eg. hot, comic, etc. */
-    explicit GagRequest(NetworkManager *networkManager, const QString &section, QObject *parent = 0);
+    explicit GagRequest(NetworkManager *networkManager, QObject *parent = 0);
 
-    /*!
-     * \brief GagRequest Overloaded Constructor.
-     * \param groupId The id to select between the different 9GAG sections/groups.
-     */
-    explicit GagRequest(NetworkManager *networkManager, const int groupId, const QString &section,
-                        QObject *parent = 0);
-
-    /*! Set the id of the last gag in the list. If this is set, the gags retrieved are older than
-        the last gag. */
-    void setLastId(const QString &lastId);
-
-    /*! \brief setNoMorePosts Sets the state for the case if there are no further posts available to fetch.
-     * Set \p noMorePosts to true if there are no further posts available for the current section/groupId. */
-    void setNoMorePosts(bool noMorePosts);
-
-    /*! Initiates the request. */
-    void initiateRequest();
-
-    /*! Send the request. */
-    void send();
+    void initiateGagsRequest();
+    void fetchGags(int groupId, QString &section, QString &lastId);
 
 signals:
-    /*! Emit when the request is succeeded. \p gagList contains the gag list retrieved. */
-    void success(const QList<GagObject> &gagList);
+    /*! Emit this if the network request succeeds on fetching the gags data and
+     *  the content has been parsed successful.
+     *  \p gagList Contains the parsed GagObjects. */
+    void fetchGagsSuccess(const QList<GagObject> &gagList);
 
-    /*! Emit when the request is failed, \p errorMessage contains the reason
-        of the failure and should be shown to user. */
-    void failure(const QString &errorMessage);
+    /*! Emit this if the network request failed on fetching the gags data.
+     *  \p errorMessage Contains the reason of the failure. */
+    void fetchGagsFailure(const QString &errorMessage);
 
-    /*! Emit to initiate/send the request.
-        \sa send, createRequest */
-    void readyToRequest();
+    /*! Emit this to initiate the request to fetch the data for the gags/posts.
+     *  \sa fetchGags, fetchGagsImpl */
+    void readyToRequestGags();
+
+    /*! Emit this if there are no further gags/posts available for the current
+     *  section/groupId and therefore the end of the list has been reached. */
+    void reachedEndOfList();
 
 protected:
-    /*! Implement this to start/send the request by emitting the readyToRequest signal.
-     *  This function is useful if some preparation is needed prior to the request or to
-     *  achieve a specific state of the derived GagRequest object (e.g. a login).
-     *  \sa readyToRequest */
-    virtual void startRequest() = 0;
-
-    /*! Implement this to make your own network request. \p section specify from which
-        9GAG section to get the gags, eg. hot, comic, etc. \p lastId is id of the last
-        gag, can be empty. */
-    virtual QNetworkReply *createRequest(const int groupId, const QString &section, const QString &lastId) = 0;
-
-    /*! Implement this to parse the response to a list of gags. */
-    virtual QList<GagObject> parseResponse(const QByteArray &response) = 0;
-
     /*! Get the global instance of NetworkManager. */
     NetworkManager *networkManager() const;
 
+    /*! Implement this to start/send the request by emitting the readyToRequestGags
+     *  signal. This function is useful if some preparation is needed prior to
+     *  the request or to achieve a specific state of the derived GagRequest
+     *  object (e.g. a login).
+     *  \sa readyToRequestGags */
+    virtual void startGagsRequest() = 0;
+
+    /*! Implement this to make your own network request.\p groupId The id to select
+     * between the different sections/groups. \p section Specifies the section from
+     * which the gags should be fetched, eg. 'hot'. \p lastId is the id of the last
+     * gag (it has to be an empty QString object if the latest gags that should be
+     * fetched). */
+    virtual QNetworkReply *fetchGagsImpl(const int groupId, const QString &section,
+                                         const QString &lastId) = 0;
+
+    /*! Implement this to parse the network response to a list of GagObjects.
+     *  \p response This is the content of the network reply. */
+    virtual QList<GagObject> parseGags(const QByteArray &response) = 0;
+
 private slots:
-    void onFinished();
+    void onFetchGagsFinished();
 
 private:
     NetworkManager *m_networkManager;
-    QNetworkReply *m_reply;
-    const int m_groupId;
-    const QString m_section;
-    QString m_lastId;
+    QNetworkReply *m_gagsReply;
     QList<GagObject> m_gagList;
-    bool m_noMorePosts;
 };
 
 #endif // GAGREQUEST_H

@@ -25,6 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "ninegagapirequest.h"
+
 //#include <QJsonParseError>
 #include <QTextDocument>
 #include <QJsonDocument>
@@ -33,13 +35,25 @@
 #include <QJsonValue>
 #include <QDebug>
 
-#include "ninegagapirequest.h"
-#include "networkmanager.h"
+/*!
+    \class NineGagApiRequest
+    \since 1.3.0
+    \brief The NineGagApiRequest class handles all API requests and parses the retrieved content.
 
+    The NineGagApiRequest class accesses the content provider API via the NineGagApiClient and
+    parses all the responses.
 
-NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, const int groupId, const QString &section,
-                                     QObject *parent)
-    : GagRequest(networkManager, groupId, section, parent), m_apiClient(new NineGagApiClient(this))
+    \sa NineGagApiClient
+*/
+
+/*!
+ * \brief NineGagApiRequest::NineGagApiRequest Constructor.
+ * \param networkManager Pointer to the global NetworkManager instance.
+ * \param parent The parent object.
+ */
+NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, QObject *parent)
+    : GagRequest(networkManager, parent),
+      m_apiClient(new NineGagApiClient(this->networkManager(), this))
 {
     connect(m_apiClient, SIGNAL(loggedIn()), this, SLOT(onLogin()), Qt::UniqueConnection);
     m_loginOngoing = true;
@@ -50,18 +64,25 @@ NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, const int g
     m_apiClient->login(this->networkManager(), true);
 }
 
+/*!
+ * \brief NineGagApiRequest::~NineGagApiRequest Destructor.
+ */
 NineGagApiRequest::~NineGagApiRequest()
 {
     m_apiClient->deleteLater();
 }
 
-void NineGagApiRequest::startRequest()
+/*!
+ * \brief NineGagApiRequest::startGagsRequest Reimplementation to initiate the request for
+ *  fetching the gags.
+ */
+void NineGagApiRequest::startGagsRequest()
 {
     if (!m_loginOngoing) {
 
         // check if a re-login is required
         if (m_apiClient->sessionIsValid()) {
-            emit readyToRequest();
+            emit readyToRequestGags();
         }
         else {
             qDebug() << "Performing a re-login...";
@@ -78,12 +99,27 @@ void NineGagApiRequest::startRequest()
     }
 }
 
-QNetworkReply *NineGagApiRequest::createRequest(const int groupId, const QString &section, const QString &lastId)
+/*!
+ * \brief NineGagApiRequest::fetchGagsImpl Reimplementation to perform the network
+ *  request for fetching the gags.
+ * \param groupId The id to select between the different sections/groups.
+ * \param section Specifies the section from which the gags should be fetched.
+ * \param lastId The id of the last gag needed for the pagination.
+ * \return Returns the QNetworkReply object of the request.
+ */
+QNetworkReply *NineGagApiRequest::fetchGagsImpl(const int groupId, const QString &section,
+                                                const QString &lastId)
 {
     return m_apiClient->getPosts(this->networkManager(), groupId, section, lastId);
 }
 
-QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
+/*!
+ * \brief NineGagApiRequest::parseGags Reimplementation to parse the network request
+ *  to a list of gags.
+ * \param response The response of the network request.
+ * \return Returns a list of GagObjects.
+ */
+QList<GagObject> NineGagApiRequest::parseGags(const QByteArray &response)
 {
     QJsonObject rootObj = QJsonDocument::fromJson(response).object();
     QJsonArray postsArr = rootObj.value("data").toObject().value("posts").toArray();
@@ -93,11 +129,12 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
         qWarning("Empty JSON API response!");
         qDebug() << "### API response is: ###\n" << response;
 
-        // if reached end of the list and there are no further posts (e.g. possible inside 'Fresh' section)
+        /* if reached end of the list and there are no further posts
+         * (e.g. possible inside 'Fresh' section) */
         if (rootObj.value("data").toObject().value("didEndOfList").toDouble())
         {
-            setNoMorePosts(true);
             qDebug() << "Reached end of the list. There are no further posts to fetch.";
+            emit reachedEndOfList();
         }
     }
 
@@ -108,12 +145,7 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
 
         GagObject gag;
         gag.setId(gagMap.value("id").toString());
-
-        // url: change url to mobile website
-        QString urlStr = gagMap.value("url").toString();
-        urlStr = urlStr.insert((urlStr.indexOf(":") + 3), QString("m."));
-        gag.setUrl(QUrl(urlStr));
-        //gag.setUrl(gagMap.value("url").toUrl());
+        gag.setUrl(gagMap.value("url").toUrl());
 
         // title: convert included entity numbers
         QString titleStr = gagMap.value("title").toString();
@@ -158,7 +190,7 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
         }
         else if (gagType == QString("Animated")) {
 
-            // 9gag provides GIFs only as a video source
+            // GIFs are only available as a video source
             gag.setIsVideo(true);
             gag.setImageUrl(imagesMap.value("image700").toMap().value("url").toUrl());
             gag.setVideoUrl(imagesMap.value("image460sv").toMap().value("url").toUrl());
@@ -170,8 +202,10 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
             if (!duration) {
                 gag.setIsGIF(true);
                 gag.setImageUrl(imagesMap.value("image700").toMap().value("url").toUrl());
-                //gag.setGifImageUrl(imagesMap.value("image700ba").toMap().value("url").toUrl());   // GIF (urls not existend)
-                gag.setGifImageUrl(imagesMap.value("image460sv").toMap().value("url").toUrl());   // mp4-Video
+                // GIF (this urls are not accessible/existend)
+                //gag.setGifImageUrl(imagesMap.value("image700ba").toMap().value("url").toUrl());
+                // mp4-Video
+                gag.setGifImageUrl(imagesMap.value("image460sv").toMap().value("url").toUrl());
 
                 // ToDo: update model to support 'GIFs' with video source
             }
@@ -184,7 +218,8 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
             */
         }
         else if (gagType == QString("Album")) {
-            // An Album consists of multiple separate gags with its own id, all specified in the 'article' json object
+            /* An Album consists of multiple separate gags with its own id, all specified
+             * in the 'article' json object */
 
             gag.setImageUrl(imagesMap.value("image700").toMap().value("url").toUrl());
             qDebug() << "Found an unsupported 'Album' Gag: " << gag.title();
@@ -204,8 +239,11 @@ QList<GagObject> NineGagApiRequest::parseResponse(const QByteArray &response)
     return gagList;
 }
 
+/*!
+ * \brief NineGagApiRequest::onLogin Slot to process a successful login.
+ */
 void NineGagApiRequest::onLogin()
 {
     m_loginOngoing = false;
-    emit readyToRequest();
+    emit readyToRequestGags();
 }
