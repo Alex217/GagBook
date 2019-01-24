@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2019 Alexander Seibel.
  * Copyright (c) 2014 Dickson Leong.
  * All rights reserved.
  *
@@ -25,7 +26,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import QtQuick 2.0
+import QtQuick 2.2
 import Sailfish.Silica 1.0
 
 ListItem {
@@ -40,7 +41,7 @@ ListItem {
     Label {
         id: labelItem
         anchors {
-            left: parent.left; right: parent.right; margins: Theme.paddingLarge
+            left: parent.left; right: parent.right; margins: Theme.horizontalPageMargin
             verticalCenter: parent.verticalCenter
         }
         font.bold: selected

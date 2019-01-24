@@ -38,8 +38,10 @@ AppSettings::AppSettings(QObject *parent) :
 
 void AppSettings::readSettings()
 {
-    // reset deprecated config file
-    if (!m_settings->contains("version")) {
+    QString version = m_settings->value("version", "0.0").toString();
+
+    // reset deprecated (or missing) config file
+    if (!m_settings->contains("version") || (version != QString("0.2"))) {
         setDefaultSettings();
         return;
     }
@@ -58,7 +60,7 @@ void AppSettings::setDefaultSettings()
 {
     m_settings->clear();
 
-    m_settings->setValue("version", "0.1");
+    m_settings->setValue("version", "0.2");
 
     m_loggedIn = false;
     m_settings->setValue("loggedIn", m_loggedIn);
@@ -73,6 +75,8 @@ void AppSettings::setDefaultSettings()
 
     m_sections->setDefaultSections();
     m_sections->save(m_settings, "sections");
+
+    m_settings->sync();
 }
 
 bool AppSettings::isLoggedIn() const
