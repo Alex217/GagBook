@@ -40,13 +40,17 @@
 
 #include "ninegagapiclient.h"
 
+/*!
+    \class NineGagApiClient
+    \since 1.3.0
+    \brief The NineGagApiClient class provides the data via the undisclosed official 9GAG.com API.
+*/
 
 // Defining API URLs:
 const QByteArray API_URL = "https://api.9gag.com";
 const QByteArray COMMENT_URL = "https://comment.9gag.com";
-const QByteArray COMMENT_CDN_URL = "https://comment-cdn.9gag.com";
+const QByteArray COMMENT_URL_CDN = "https://comment-cdn.9gag.com";
 const QByteArray NOTIFY_URL = "https://notify.9gag.com";
-const QByteArray AD_URL = "https://ad.9gag.com";
 const QByteArray ADMIN_URL = "https://admin.9gag.com";
 
 // Defining API paths:
@@ -54,38 +58,62 @@ const QByteArray POSTS_PATH = "/v2/post-list";
 const QByteArray GUEST_PATH = "/v2/guest-token";
 const QByteArray LOGIN_PATH = "/v2/user-token";
 const QByteArray SECTIONS_PATH = "/v2/group-list";
-// "/v1/topComments.json"
-// "/v1/comment.json"
+const QByteArray COMMENT_PATH = "/v1/comment.json";
+const QByteArray COMMENT_PATH_CDN = "/v1/cacheable/comment-list.json";
+const QByteArray COMMENTINFO_PATH = "/v1/commentInfo.json";
+const QByteArray COMMENTSDATA_PATH = "/v1/commentsData.json";
+const QByteArray TOPCOMMENTS_PATH = "/v1/topComments.json";
 
 // Defining App constants:
 const QByteArray APP_ID = "com.ninegag.android.app";
 const QByteArray DEVICE_TYPE = "android";
 const QByteArray BUCKET_NAME = "__DEFAULT__";   // "MAIN_RELEASE";
-const QByteArray COMMENT_CDN = "a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b";
+const QByteArray COMMENT_ID_CDN = "a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b";
 
-
-NineGagApiClient::NineGagApiClient(QObject *parent) :
-    QObject(parent), m_appToken(createSHA1()), m_deviceUUID(createUUID()), m_loginReply(0),
-    m_tokenExpiry(0), m_isGuestSession(true)
+/*!
+ * \brief NineGagApiClient::NineGagApiClient Constructor.
+ * \param netMan Pointer to the global NetworkManager instance.
+ * \param parent The parent object.
+ */
+NineGagApiClient::NineGagApiClient(NetworkManager *netMan, QObject *parent) :
+    QObject(parent), m_netMan(netMan), m_appToken(createSHA1()), m_deviceUUID(createUUID()),
+    m_loginReply(0), m_tokenExpiry(0), m_isGuestSession(true)
 {
 
 }
 
+/*!
+ * \brief NineGagApiClient::getTimestamp Generates the current system time in milliseconds.
+ * \return Returns the current (POSIX) system time in milliseconds.
+ */
 QByteArray NineGagApiClient::getTimestamp()
 {
     return QByteArray::number(QDateTime::currentMSecsSinceEpoch());
 }
 
+/*!
+ * \brief NineGagApiClient::createSHA1 Generates a SHA-1 hash sum based on the current system time.
+ * \return Returns the QByteArray representation formatted as a hex digit.
+ */
 QByteArray NineGagApiClient::createSHA1()
 {
     return QCryptographicHash::hash(getTimestamp(), QCryptographicHash::Sha1).toHex();
 }
 
+/*!
+ * \brief NineGagApiClient::createMD5 Generates a MD5 hash sum for the given QString.
+ * \param str The data to generate the MD5 hash sum.
+ * \return  Returns a hex encoded MD5 hash for the given QString.
+ */
 QByteArray NineGagApiClient::createMD5(const QString &str)
 {
     return QCryptographicHash::hash(str.toUtf8(), QCryptographicHash::Md5).toHex();
 }
 
+/*!
+ * \brief NineGagApiClient::createUUID Generates a QUuid based on random numbers and returns it as a QString.
+ * \return Returns the QByteArray representation formatted as five hex digits.
+ */
 QByteArray NineGagApiClient::createUUID()
 {
     // remove '{', '}' and '-' from the string
@@ -98,6 +126,11 @@ QByteArray NineGagApiClient::createUUID()
     //return QUuid::createUuid().toByteArray();
 }
 
+/*!
+ * \brief NineGagApiClient::createRequestSig Generates a specific hash sum to sign the HTTP request.
+ * \param timestamp The timestamp needed for the signature generation.
+ * \return Returns the generated request signature as a QByteArray representation.
+ */
 QByteArray NineGagApiClient::createRequestSig(const QByteArray &timestamp)
 {
     QString str = QString("*%1_._%2._.%3").arg(QString(timestamp)).arg(QString(APP_ID)).arg(QString(m_deviceUUID));
@@ -106,7 +139,23 @@ QByteArray NineGagApiClient::createRequestSig(const QByteArray &timestamp)
     return QCryptographicHash::hash(str.toUtf8(), QCryptographicHash::Sha1).toHex();
 }
 
-QNetworkReply *NineGagApiClient::request(NetworkManager *netMan, const QUrl &url, bool sign)
+/*!
+ * \brief NineGagApiClient::request Sends the API request with the given data.
+ * \param netReq The QNetworkRequest object that should be used for the request.
+ * \return Returns the pointer to the QNetworkReply object of the request.
+ */
+QNetworkReply *NineGagApiClient::request(QNetworkRequest netReq)
+{
+    return m_netMan->createGetRequest(netReq);
+}
+
+/*!
+ * \brief NineGagApiClient::request Sends the API request with the given data.
+ * \param url The url to which the request is directed to.
+ * \param sign Set this to true to sign the request.
+ * \return Returns the pointer to the QNetworkReply object of the request.
+ */
+QNetworkReply *NineGagApiClient::request(const QUrl &url, bool sign)
 {
     QNetworkRequest netReq;
 
@@ -133,10 +182,13 @@ QNetworkReply *NineGagApiClient::request(NetworkManager *netMan, const QUrl &url
     // this attribute was introduced with Qt 5.6 and Sailfish OS 2.1.0.x
     //netReq.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
 
-    return netMan->createGetRequest(netReq);
+    return this->request(netReq);
 }
 
-void NineGagApiClient::guestLogin(NetworkManager *netMan)
+/*!
+ * \brief NineGagApiClient::guestLogin Performs a guest login on the API server.
+ */
+void NineGagApiClient::guestLogin()
 {
     if (!m_isGuestSession) {
         m_isGuestSession = true;
@@ -146,11 +198,17 @@ void NineGagApiClient::guestLogin(NetworkManager *netMan)
 
     Q_ASSERT(m_loginReply == 0);
 
-    m_loginReply = this->request(netMan, url);
-    connect(m_loginReply, SIGNAL(finished()), this, SLOT(guestLoginFinished()), Qt::UniqueConnection);
+    m_loginReply = this->request(url);
+    connect(m_loginReply, &QNetworkReply::finished, this, &NineGagApiClient::guestLoginFinished,
+            Qt::UniqueConnection);
 }
 
-void NineGagApiClient::userLogin(NetworkManager *netMan, const QString &username, const QString &password)
+/*!
+ * \brief NineGagApiClient::userLogin Performs a user login on the API server.
+ * \param username The username string (e-mail).
+ * \param password The password string.
+ */
+void NineGagApiClient::userLogin(const QString &username, const QString &password)
 {
     if (m_isGuestSession) {
         m_isGuestSession = false;
@@ -159,7 +217,7 @@ void NineGagApiClient::userLogin(NetworkManager *netMan, const QString &username
     QUrl url(API_URL + LOGIN_PATH);
     QUrlQuery query;
 
-    query.addQueryItem("loginMethod", "9gag");  // ToDo: "email"?
+    query.addQueryItem("loginMethod", "9gag");  // TODO: "email"?
     query.addQueryItem("loginName", username);
     query.addQueryItem("password", createMD5(password));
     query.addQueryItem("pushToken", createSHA1());
@@ -176,23 +234,69 @@ void NineGagApiClient::userLogin(NetworkManager *netMan, const QString &username
 
     Q_ASSERT(m_loginReply == 0);
 
-    m_loginReply = this->request(netMan, url);
-    connect(m_loginReply, SIGNAL(finished()), this, SLOT(userLoginFinished()), Qt::UniqueConnection);
+    m_loginReply = this->request(url);
+    connect(m_loginReply, &QNetworkReply::finished, this, &NineGagApiClient::userLoginFinished,
+            Qt::UniqueConnection);
 }
 
-void NineGagApiClient::login(NetworkManager *netMan, bool guest, const QString &username, const QString &password)
+/*!
+ * \brief NineGagApiClient::login Performs a login on the API server.
+ * \param guest Determines whether to perform a login as user or guest (true for guest login).
+ * \param username The username e-mail string (obsolete if guest login is used).
+ * \param password The password string (obsolete if guest login is used).
+ */
+void NineGagApiClient::login(bool guest, const QString &username, const QString &password)
 {
     if (guest) {
-        this->guestLogin(netMan);
+        this->guestLogin();
     }
     else {
-        this->userLogin(netMan, username, password);
+        this->userLogin(username, password);
     }
 }
 
-// first a login is required to access the posts
-QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const int groupId, const QString &section,
-                                          const QString &lastId)
+/*!
+ * \brief NineGagApiClient::sessionIsValid Checks if the login/session is still valid.
+ * \return Returns true if the session is still valid and a re-login is not needed.
+ */
+bool NineGagApiClient::sessionIsValid()
+{
+    if (m_tokenExpiry == 0) {
+        qWarning("First a login is required to fetch the posts!");
+        return false;
+    }
+    else {
+        // get current time in seconds
+        quint32 currentTime = (quint32) (this->getTimestamp().toULongLong() / (quint32) 1000);
+
+        // check for session expiry
+        if (currentTime > m_tokenExpiry) {
+            qDebug() << "The session expired. A re-login is required!";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/*!
+ * \brief NineGagApiClient::isGuestSession Returns the current login state (logged in as guest or user).
+ * \return Returns true if the API client has been logged in as guest.
+ */
+bool NineGagApiClient::isGuestSession()
+{
+    return m_isGuestSession;
+}
+
+/*!
+ * \brief NineGagApiClient::getPosts Performs an API request and returns the response as QNetworkReply.
+ *  Be aware that first a login has to be performed to access the servers.
+ * \param groupId The id to select between the different sections/groups.
+ * \param section Selects the 'subsection' inside the given group/section ('hot', 'trending' or 'vote').
+ * \param lastId The id of the last GagObject in the list.
+ * \return Returns the post data.
+ */
+QNetworkReply *NineGagApiClient::getPosts(const int groupId, const QString &section, const QString &lastId)
 {
     QUrl url(API_URL + POSTS_PATH);
     QUrlQuery query;
@@ -225,50 +329,104 @@ QNetworkReply *NineGagApiClient::getPosts(NetworkManager *netMan, const int grou
     //url = QUrl(tmp);
     //qDebug() << "Constructed request URL: " << url;
 
-    return this->request(netMan, url);
+    return this->request(url);
 }
 
-bool NineGagApiClient::sessionIsValid()
+/*!
+ * \brief NineGagApiClient::getComments Retrieves the comment data for a given post.
+ * \param gagUrl The URL of the post for that the comments should be fetched.
+ * \param count The number of comments that should be loaded.
+ * \param level
+ * \param refComment The commentId/orderKey of a comment to load the comments beneath that comment.
+ *  A given orderKey value loads top-level comments and a commentId value loads second-level comments.
+ * \param sortOrder Note that for SortOrder::Time the posts are ordered by the timestamp-value and
+ *  not by the elapsed time!
+ * \param sortDirection
+ * \param auth
+ * \return Returns the retrieved comment data.
+ */
+QNetworkReply *NineGagApiClient::getComments(const QUrl &gagUrl, const int count, const int level,
+                                             QString refComment, SortOrder sortOrder,
+                                             SortDirection sortDirection, const QString &auth)
 {
-    if (m_tokenExpiry == 0) {
-        qWarning("First a login is required to fetch the posts!");
-        return false;
-    }
-    else {
-        // get current time in seconds
-        quint32 currentTime = (quint32) (this->getTimestamp().toULongLong() / (quint32) 1000);
+    QUrl reqUrl(COMMENT_URL_CDN + COMMENT_PATH_CDN);
+    QUrlQuery query;
 
-        // check for session expiry
-        if (currentTime > m_tokenExpiry) {
-            qDebug() << "The session expired. A re-login is required!";
-            return false;
-        }
+    query.addQueryItem("appId", COMMENT_ID_CDN);
+    query.addQueryItem("url", QUrl::toPercentEncoding(gagUrl.toString()));
+
+    // Set sort order
+    switch (sortOrder) {
+        default:
+            qWarning("NineGagApiClient::getComments(): Using invalid sort order, "
+                     "default value will be used!");
+            // fall through
+        case SortOrder::Score:
+            query.addQueryItem("order", "score");
+            break;
+        case SortOrder::Time:
+            query.addQueryItem("order", "ts");
+            break;
     }
 
-    return true;
+    // Set sort direction
+    switch (sortDirection) {
+        default:
+        qWarning("NineGagApiClient::getComments(): Using invalid sort direction, "
+                 "default value will be used!");
+            // fall through
+        case SortDirection::Descending:
+            query.addQueryItem("direction", "desc");
+            break;
+        case SortDirection::Ascending:
+            query.addQueryItem("direction", "asc");
+            break;
+    }
+
+    // set refComment
+    if (!refComment.isEmpty()) {
+        // 'score_*'-value (orderKey) loads further top-level comments
+        // 'c_*'-value (commentId) loads further second-level comments
+        query.addQueryItem("ref", refComment);
+        query.addQueryItem("refCommentId", refComment);
+    }
+
+    query.addQueryItem("count", QString::number(count));
+    query.addQueryItem("level", QString::number(level));
+    query.addQueryItem("auth", (auth.isEmpty() ? "null" : auth));
+
+    reqUrl.setQuery(query.query());
+
+    QNetworkRequest netReq;
+    netReq.setUrl(reqUrl);
+    netReq.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    netReq.setRawHeader("appId", COMMENT_ID_CDN);
+    // User-Agent
+    netReq.setRawHeader("X-Package-ID", APP_ID);
+    netReq.setRawHeader("X-Device-UUID", m_deviceUUID);
+    // X-Package-Version
+    //netReq.setRawHeader("Connection", "keep-alive");
+    //netReq.setRawHeader("Accept-Encoding", "gzip");
+
+    return this->request(netReq);
 }
 
-bool NineGagApiClient::isGuestSession()
-{
-    if (m_isGuestSession) {
-        return true;
-    }
-
-    return false;
-}
-
-QNetworkReply *NineGagApiClient::retrieveSections(NetworkManager *netMan)
+// TODO
+QNetworkReply *NineGagApiClient::retrieveSections()
 {
     QUrl url(API_URL + SECTIONS_PATH);
     QUrlQuery query;
 
     query.addQueryItem("entryTypes", "animated,photo,video,article");
-    //query.addQueryItem("locale", "de_DE");    // ToDo: add device specific locale setting
+    //query.addQueryItem("locale", "de_DE");    // TODO: add device specific locale setting
     url.setQuery(query.query());
 
-    return this->request(netMan, url);
+    return this->request(url);
 }
 
+/*!
+ * \brief NineGagApiClient::guestLoginFinished This slot handles a finished guest login.
+ */
 void NineGagApiClient::guestLoginFinished()
 {
     QJsonDocument jsonDoc = QJsonDocument::fromJson(m_loginReply->readAll());
@@ -285,6 +443,9 @@ void NineGagApiClient::guestLoginFinished()
     emit loggedIn();
 }
 
+/*!
+ * \brief NineGagApiClient::userLoginFinished This slot handles a finished user login.
+ */
 void NineGagApiClient::userLoginFinished()
 {
     // ToDo: check Login success

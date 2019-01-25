@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alexander Seibel.
+ * Copyright (C) 2019 Alexander Seibel.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -25,42 +25,56 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NINEGAGAPIREQUEST_H
-#define NINEGAGAPIREQUEST_H
+#ifndef COMMENTMEDIAOBJECT_H
+#define COMMENTMEDIAOBJECT_H
 
-#include <QNetworkReply>
+#include <QUrl>
+#include <QSize>
+#include <QObject>
+#include <QExplicitlySharedDataPointer>
 
-#include "gagrequest.h"
-#include "networkmanager.h"
-#include "ninegagapiclient.h"
-#include "commentmediaobject.h"
+class CommentMediaObjectData;
 
-class NineGagApiRequest : public GagRequest
+class CommentMediaObject
 {
-    Q_OBJECT
+    Q_GADGET
 
 public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
+    enum CommentMediaType {
+      Static,
+      Animated,
+      Invalid
+    };
 
-protected:
-    void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseGags(const QByteArray &response);
-    QNetworkReply *fetchCommentsImpl(const QVariantList &data);
-    QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
+    Q_ENUM(CommentMediaType)
 
-private slots:
-    void onLogin();
+    explicit CommentMediaObject();
+    CommentMediaObject(const CommentMediaObject &obj);
+    CommentMediaObject &operator=(const CommentMediaObject &obj);
+    ~CommentMediaObject();
+
+    Q_INVOKABLE CommentMediaType mediaType();
+    void setMediaType(CommentMediaType type);
+
+    Q_INVOKABLE QUrl imageUrl() const;
+    void setImageUrl(const QUrl &url);
+    Q_INVOKABLE QSize imageSize() const;
+    void setImageSize(const QSize &size);
+
+    Q_INVOKABLE QUrl gifUrl() const;
+    void setGifUrl(const QUrl &url);
+    Q_INVOKABLE QSize gifSize() const;
+    void setGifSize(const QSize &size);
+
+    Q_INVOKABLE QUrl videoUrl() const;
+    void setVideoUrl(const QUrl &url);
+    Q_INVOKABLE QSize videoSize() const;
+    void setVideoSize(const QSize &size);
 
 private:
-    NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
-
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
+    QExplicitlySharedDataPointer<CommentMediaObjectData> data;
 };
 
-#endif // NINEGAGAPIREQUEST_H
+Q_DECLARE_METATYPE(CommentMediaObject)
+
+#endif // COMMENTMEDIAOBJECT_H

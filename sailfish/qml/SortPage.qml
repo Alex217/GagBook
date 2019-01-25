@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alexander Seibel.
+ * Copyright (C) 2019 Alexander Seibel.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -25,42 +25,56 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NINEGAGAPIREQUEST_H
-#define NINEGAGAPIREQUEST_H
+import QtQuick 2.2
+import Sailfish.Silica 1.0
 
-#include <QNetworkReply>
+Page {
+    property int currentlySelectedIndex: 0
+    signal selectedSortTypeChanged(string sortType)
 
-#include "gagrequest.h"
-#include "networkmanager.h"
-#include "ninegagapiclient.h"
-#include "commentmediaobject.h"
+    function getSortingText(sortType) {
+        if (sortType === "hot")
+            //: The 'Hot' sorting lists the best rated items at the top (e.g. comments with the most upvotes).
+            //% Synonyms: Popular, Favoured
+            return qsTr("Hot")
+        else if (sortType === "fresh")
+            //: The 'Fresh' sorting lists the newest items (by the elapsed time) at the top.
+            //% Synonyms: New, Recent
+            return qsTr("Fresh")
+    }
 
-class NineGagApiRequest : public GagRequest
-{
-    Q_OBJECT
+    SilicaListView {
+        anchors.fill: parent
+        model: sortModel
 
-public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
+        header: PageHeader {
+            title: qsTr("Sorting")
+        }
 
-protected:
-    void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseGags(const QByteArray &response);
-    QNetworkReply *fetchCommentsImpl(const QVariantList &data);
-    QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
+        delegate: SimpleListItem {
 
-private slots:
-    void onLogin();
+            text: getSortingText(sortType)
+            selected: currentlySelectedIndex == index
 
-private:
-    NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
+            onClicked: {
+                currentlySelectedIndex = index
+                selectedSortTypeChanged(sortType)
+                pageStack.pop()
+            }
+        }
 
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
-};
+        VerticalScrollDecorator { }
+    }
 
-#endif // NINEGAGAPIREQUEST_H
+    ListModel {
+        id: sortModel
+
+        ListElement {
+            sortType: "hot"
+        }
+
+        ListElement {
+            sortType: "fresh"
+        }
+    }
+}

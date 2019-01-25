@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alexander Seibel.
+ * Copyright (C) 2019 Alexander Seibel.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -25,42 +25,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NINEGAGAPIREQUEST_H
-#define NINEGAGAPIREQUEST_H
+#ifndef NETWORKACCESSMANAGERFACTORY_H
+#define NETWORKACCESSMANAGERFACTORY_H
 
-#include <QNetworkReply>
+#include <QQmlNetworkAccessManagerFactory>
+#include <QNetworkAccessManager>
 
-#include "gagrequest.h"
-#include "networkmanager.h"
-#include "ninegagapiclient.h"
-#include "commentmediaobject.h"
-
-class NineGagApiRequest : public GagRequest
+class NetworkAccessManagerFactory : public QQmlNetworkAccessManagerFactory
 {
-    Q_OBJECT
-
 public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
-
-protected:
-    void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseGags(const QByteArray &response);
-    QNetworkReply *fetchCommentsImpl(const QVariantList &data);
-    QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
-
-private slots:
-    void onLogin();
-
-private:
-    NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
-
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
+    NetworkAccessManagerFactory() = default;
+    QNetworkAccessManager *create(QObject *parent);
 };
 
-#endif // NINEGAGAPIREQUEST_H
+#endif // NETWORKACCESSMANAGERFACTORY_H

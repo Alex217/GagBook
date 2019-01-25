@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alexander Seibel.
+ * Copyright (C) 2019 Alexander Seibel.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -25,42 +25,41 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NINEGAGAPIREQUEST_H
-#define NINEGAGAPIREQUEST_H
+#include "networkaccessmanagerfactory.h"
 
-#include <QNetworkReply>
+#include <QNetworkDiskCache>
+#include <QStandardPaths>
 
-#include "gagrequest.h"
-#include "networkmanager.h"
-#include "ninegagapiclient.h"
-#include "commentmediaobject.h"
+static const QString NETWORK_CACHE_PATH = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+        .append("/harbour-gagbook/network");
 
-class NineGagApiRequest : public GagRequest
+class MyNetworkAccessManager : public QNetworkAccessManager
 {
-    Q_OBJECT
-
 public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
+    MyNetworkAccessManager(QObject *parent) : QNetworkAccessManager(parent)
+    {
+    }
 
 protected:
-    void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseGags(const QByteArray &response);
-    QNetworkReply *fetchCommentsImpl(const QVariantList &data);
-    QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
+    QNetworkReply *createRequest(Operation operation, const QNetworkRequest &request,
+                                 QIODevice *outgoingData = nullptr) override
+    {
+        QNetworkRequest cacheRequest(request);
+        cacheRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, //QNetworkRequest::PreferCache);
+                                  (networkAccessible() == QNetworkAccessManager::Accessible) ?
+                                      QNetworkRequest::PreferCache : QNetworkRequest::AlwaysCache);
 
-private slots:
-    void onLogin();
-
-private:
-    NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
-
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
+        return QNetworkAccessManager::createRequest(operation, cacheRequest, outgoingData);
+    }
 };
 
-#endif // NINEGAGAPIREQUEST_H
+QNetworkAccessManager *NetworkAccessManagerFactory::create(QObject *parent)
+{
+    QNetworkAccessManager *manager = new MyNetworkAccessManager(parent);
+    QNetworkDiskCache *diskCache = new QNetworkDiskCache(manager);
+    diskCache->setCacheDirectory(NETWORK_CACHE_PATH);
+
+    manager->setCache(diskCache);
+    // TODO set a cookie?
+    return manager;
+}

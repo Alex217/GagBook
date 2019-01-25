@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alexander Seibel.
+ * Copyright (C) 2019 Alexander Seibel.
  * All rights reserved.
  *
  * This file is part of GagBook.
@@ -25,42 +25,48 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NINEGAGAPIREQUEST_H
-#define NINEGAGAPIREQUEST_H
+#ifndef USEROBJECT_H
+#define USEROBJECT_H
 
-#include <QNetworkReply>
+#include <QUrl>
+#include <QObject>
+#include <QExplicitlySharedDataPointer>
 
-#include "gagrequest.h"
-#include "networkmanager.h"
-#include "ninegagapiclient.h"
-#include "commentmediaobject.h"
+class UserObjectData;
 
-class NineGagApiRequest : public GagRequest
+class UserObject
 {
-    Q_OBJECT
+    Q_GADGET
 
 public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
+    explicit UserObject();
+    explicit UserObject(const QString &userId);
+    UserObject(const UserObject &obj);
+    UserObject &operator=(const UserObject &obj);
+    ~UserObject();
 
-protected:
-    void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
-    QList<GagObject> parseGags(const QByteArray &response);
-    QNetworkReply *fetchCommentsImpl(const QVariantList &data);
-    QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
+    Q_INVOKABLE QString name() const;
+    void setName(const QString &name);
 
-private slots:
-    void onLogin();
+    Q_INVOKABLE QString userId() const;
+    void setUserId(const QString &id);
+
+    Q_INVOKABLE QString emojiStatus() const;
+    void setEmojiStatus(const QString &status);
+
+    Q_INVOKABLE QUrl avatarUrl() const;
+    void setAvatarUrl(const QUrl &url);
+
+    Q_INVOKABLE bool isProUser() const;
+    void setIsProUser(bool value);
+
+    Q_INVOKABLE bool isStaffUser() const;
+    void setIsStaffUser(bool value);
 
 private:
-    NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
-
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
+    QExplicitlySharedDataPointer<UserObjectData> data;
 };
 
-#endif // NINEGAGAPIREQUEST_H
+Q_DECLARE_METATYPE(UserObject)
+
+#endif // USEROBJECT_H

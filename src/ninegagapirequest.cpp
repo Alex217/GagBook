@@ -26,6 +26,7 @@
  */
 
 #include "ninegagapirequest.h"
+#include "commentmodel.h"   // for 'Sorting' enum
 
 //#include <QJsonParseError>
 #include <QTextDocument>
@@ -33,6 +34,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonValue>
+#include <QDateTime>
 #include <QDebug>
 
 /*!
@@ -61,7 +63,7 @@ NineGagApiRequest::NineGagApiRequest(NetworkManager *networkManager, QObject *pa
     // ToDo: retrieve login data via QML
     //m_apiClient->login(this->networkManager(), false, "username", "password");
 
-    m_apiClient->login(this->networkManager(), true);
+    m_apiClient->login(true);
 }
 
 /*!
@@ -90,7 +92,7 @@ void NineGagApiRequest::startGagsRequest()
             // perform a re-login according to previous state
             if (m_apiClient->isGuestSession()) {
                 m_loginOngoing = true;
-                m_apiClient->login(this->networkManager(), true);
+                m_apiClient->login(true);
             }
             else {
                 // ToDo: perform a user login
@@ -110,7 +112,7 @@ void NineGagApiRequest::startGagsRequest()
 QNetworkReply *NineGagApiRequest::fetchGagsImpl(const int groupId, const QString &section,
                                                 const QString &lastId)
 {
-    return m_apiClient->getPosts(this->networkManager(), groupId, section, lastId);
+    return m_apiClient->getPosts(groupId, section, lastId);
 }
 
 /*!
@@ -240,10 +242,254 @@ QList<GagObject> NineGagApiRequest::parseGags(const QByteArray &response)
 }
 
 /*!
+ * \brief NineGagApiRequest::fetchCommentsImpl Reimplementation to perform the
+ *  network request for fetching the comments.
+ * \param data The required parameters to perform the request. The list has
+ *  to contain the following data in the given order:
+ *  data = {'URL of the post', 'count of comments to fetch', 'depth level',
+ *  'reference comment for pagination', 'sorting value', 'auth string'}
+ *  \sa NineGagApiClient
+ * \return Returns the QNetworkReply object of the request.
+ */
+QNetworkReply *NineGagApiRequest::fetchCommentsImpl(const QVariantList &data)
+{
+    Q_ASSERT(data.count() == 6);
+
+    CommentModel::Sorting sorting = data.at(4).value<CommentModel::Sorting>();
+    NineGagApiClient::SortOrder sortOrder;
+    NineGagApiClient::SortDirection sortDirection;
+
+    switch (sorting) {
+        default:
+            qWarning("NineGagApiRequest::fetchCommentsImpl(): Using an invalid Sorting value, "
+                     "default value will be used!");
+            // fall through
+        case CommentModel::Hot:
+            sortOrder = NineGagApiClient::Score;
+            sortDirection = NineGagApiClient::Descending;
+            break;
+        case CommentModel::Fresh:
+            sortOrder = NineGagApiClient::Time;
+            sortDirection = NineGagApiClient::Descending;
+            break;
+    }
+
+    return m_apiClient->getComments(
+                data.at(0).toUrl(),         // gagUrl
+                data.at(1).toInt(),         // count
+                data.at(2).toInt(),         // level
+                data.at(3).toString(),      // refComment
+                sortOrder,                  // sortOrder
+                sortDirection,              // sortDirection
+                data.at(5).toString());     // auth
+}
+
+/*!
+ * \brief NineGagApiRequest::parseComments Reimplementation to parse the network request
+ *  to a list of comments.
+ * \param response The response of the network request.
+ * \param parentComment The parent comment for which the comments has been fetched.
+ * \return Returns a list of CommentObject pointers.
+ */
+QList<CommentObject *> NineGagApiRequest::parseComments(const QByteArray &response,
+                                                        CommentObject *parentComment)
+{
+    QJsonObject rootObj = QJsonDocument::fromJson(response).object();
+    QJsonObject payloadObj = rootObj.value("payload").toObject();
+    QJsonArray commentsArr = payloadObj.value("comments").toArray();
+
+    // set total comment count of the model (in the root comment)
+    if (parentComment->isRootComment()) {
+        // this API value represents ALL comments including all the replies (and not just the top-level comments!)
+        parentComment->setTotalChildCount(payloadObj.value("total").toInt());
+
+        // this is a workaround to be able to determine if there are further comments to fetch:
+        // 'hasNext' determines if there are further top-level comments available
+        parentComment->setHasMoreTopLvlComments(payloadObj.value("hasNext").toBool());
+
+        // parse 'opUserId' (can be empty!)
+        parentComment->setUser(UserObject(payloadObj.value("opUserId").toString()));
+    }
+
+    return parseChildComments(commentsArr, parentComment);
+}
+
+/*!
  * \brief NineGagApiRequest::onLogin Slot to process a successful login.
  */
 void NineGagApiRequest::onLogin()
 {
     m_loginOngoing = false;
     emit readyToRequestGags();
+}
+
+/*!
+ * \brief NineGagApiRequest::parseChildComments Helper method to recursively parse all the child
+ *  comments for a parent comment.
+ * \param jsonCommentsArray The QJsonArray containing the child comments of the parent.
+ * \param parentComment The pointer to the parent comment.
+ * \return Returns a list of CommentObject pointers.
+ */
+QList<CommentObject *> NineGagApiRequest::parseChildComments(const QJsonArray &jsonCommentsArray,
+                                                             CommentObject *parentComment)
+{
+    const QVariantList variantList = jsonCommentsArray.toVariantList();
+    QList<CommentObject *> commentsList;
+
+    foreach (const QVariant &commentJson, variantList) {
+
+        const QVariantMap commentMap = commentJson.toMap();
+        CommentObject *comment = new CommentObject(parentComment);
+
+        // commentId
+        comment->setId(commentMap.value("commentId").toString());
+
+        // text: convert included entity numbers, smilies etc.
+        QString tmpStr = commentMap.value("mediaText").toString();
+        QTextDocument tmpTextDoc;
+        tmpTextDoc.setHtml(tmpStr); // TODO this removes line breaks
+        comment->setText(tmpTextDoc.toPlainText());
+
+        // type of text
+        QString type = commentMap.value("type").toString();
+        if (type == QString("text"))
+            comment->setTextType(ContentType::Text);
+        else if (type == QString("userMedia"))
+            comment->setTextType(ContentType::UserMedia);
+        else if (type == QString("media")) {
+            comment->setTextType(ContentType::Media);
+
+            // TODO fetch corresponding reaction website via API beforehand (memeful.com)
+            // remove comment text since it contains just the media URL
+            if (comment->text().contains(QString("memeful.com"), Qt::CaseInsensitive))
+                comment->setText(QString());
+        }
+        else {
+            qWarning() << "NineGagApiRequest::parseCommentMedia(): Found an unsupported media type:" << type;
+            comment->setTextType(ContentType::Text);
+        }
+
+        // media - only existent if there is embed media (type!='text')
+        if (comment->textType() != ContentType::Text) {
+            ContentType mediaType = comment->textType();
+
+            if (mediaType == ContentType::UserMedia) {
+                const QJsonArray mediaArr = QJsonValue::fromVariant(commentJson).toObject().value("media").toArray();
+
+                if (mediaArr.count() > 1)
+                    qWarning("NineGagApiRequest::parseCommentMedia(): Unexpectedly the JSON contains several media objects!");
+
+                if (!mediaArr.isEmpty())
+                    comment->setMedia(parseCommentMedia(mediaArr.first().toObject(), mediaType));
+            }
+            else if (mediaType == ContentType::Media) {
+                comment->setMedia(parseCommentMedia(QJsonValue::fromVariant(commentJson).toObject().value(
+                                                        "embedMediaMeta").toObject(), mediaType));
+            }
+            else
+                qWarning("NineGagApiRequest::parseChildComments(): An unsupported ContentType value is being used!");
+        }
+
+        // timestamp
+        comment->setTimestamp(QDateTime::fromMSecsSinceEpoch(commentMap.value("timestamp").toLongLong() * (qint64) 1000));
+
+        // permalink
+        comment->setPermalink(commentMap.value("permalink").toUrl());
+
+        // orderKey (field is only available for top-level comments) | TODO or is 0 for fetched secondLvlComments
+        comment->setOrderKey(commentMap.value("orderKey").toString());
+
+        // user
+        const QJsonObject jsonUser = QJsonValue::fromVariant(commentJson).toObject().value("user").toObject();
+        comment->setUser(parseUser(jsonUser));
+
+        // upvotes
+        comment->setUpvotes(commentMap.value("likeCount").toInt());
+
+        // child count
+        comment->setTotalChildCount(commentMap.value("childrenTotal").toInt());
+
+        // parse child comments
+        if (comment->totalChildCount() > 0) {
+            const QJsonArray childComments = QJsonValue::fromVariant(
+                        commentJson).toObject().value("children").toArray();
+
+            comment->appendChildren(parseChildComments(childComments, comment));
+        }
+
+        commentsList.append(comment);
+    }
+
+    return commentsList;
+}
+
+CommentMediaObject NineGagApiRequest::parseCommentMedia(const QJsonObject &jsonMedia,
+                                                        ContentType mediaType)
+{
+    CommentMediaObject mediaObj;
+    QJsonObject embedMedia;
+
+    if (mediaType == ContentType::UserMedia)
+        embedMedia = jsonMedia.value("imageMetaByType").toObject();
+    else if (mediaType == ContentType::Media)
+        embedMedia = jsonMedia.value("embedImage").toObject();
+    else
+        return mediaObj;
+
+    QString jsonType = embedMedia.value("type").toString();
+    CommentMediaObject::CommentMediaType type = CommentMediaObject::Invalid;
+
+    if (jsonType == QString("ANIMATED"))
+        type = CommentMediaObject::Animated;
+    else if (jsonType == QString("STATIC"))
+        type = CommentMediaObject::Static;
+    else
+        qWarning() << "NineGagApiRequest::parseCommentMedia(): Found an unsupported media type:" << jsonType << "!";
+
+    mediaObj.setMediaType(type);
+
+    QJsonObject embedMediaData = embedMedia.value("image").toObject();
+    mediaObj.setImageUrl(embedMediaData.value("url").toVariant().toUrl());
+    mediaObj.setImageSize(QSize(embedMediaData.value("width").toInt(), embedMediaData.value("height").toInt()));
+
+    if (type == CommentMediaObject::Animated)
+    {
+        embedMediaData = embedMedia.value("animated").toObject();
+        mediaObj.setGifUrl(embedMediaData.value("url").toVariant().toUrl());
+        mediaObj.setGifSize(QSize(embedMediaData.value("width").toInt(), embedMediaData.value("height").toInt()));
+
+        embedMediaData = embedMedia.value("video").toObject();
+        mediaObj.setVideoUrl(embedMediaData.value("url").toVariant().toUrl());
+        mediaObj.setVideoSize(QSize(embedMediaData.value("width").toInt(), embedMediaData.value("height").toInt()));
+    }
+
+    return mediaObj;
+}
+
+UserObject NineGagApiRequest::parseUser(const QJsonObject &jsonUser)
+{
+    UserObject userObj = UserObject();
+    userObj.setName(jsonUser.value("displayName").toString());
+    userObj.setUserId(jsonUser.value("userId").toString());
+    userObj.setAvatarUrl(jsonUser.value("avatarUrl").toVariant().toUrl());
+    const QString emojiStr = jsonUser.value("emojiStatus").toString();
+
+    if (!emojiStr.isEmpty()) {
+        QTextDocument textDoc;
+        textDoc.setHtml(emojiStr);
+        userObj.setEmojiStatus(textDoc.toPlainText());
+    }
+
+    const QJsonObject userPermission = jsonUser.value("permissions").toObject();
+
+    if (!userPermission.isEmpty()) {
+
+        if (userPermission.contains("9GAG_Pro"))
+            userObj.setIsProUser(true);
+
+        if (userPermission.contains("9GAG_Staff"))
+            userObj.setIsStaffUser(true);
+    }
+
+    return userObj;
 }

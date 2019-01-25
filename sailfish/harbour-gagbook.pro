@@ -2,7 +2,7 @@ TARGET = harbour-gagbook
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\" HAS_LIBRESOURCEQT
 
-QT += core qml quick network
+QT += core gui qml quick network
 
 CONFIG += sailfishapp c++11 #link_pkgconfig
 PKGCONFIG += libresourceqt5
@@ -23,7 +23,12 @@ HEADERS += \
     ../src/votingmanager.h \
     ../src/ninegagapiclient.h \
     ../src/ninegagapirequest.h \
-    ../src/sectionmodel.h
+    ../src/sectionmodel.h \
+    ../src/commentmodel.h \
+    ../src/commentobject.h \
+    ../src/commentmediaobject.h \
+    ../src/userobject.h \
+    ../src/networkaccessmanagerfactory.h
 
 SOURCES += main.cpp \
     ../src/qmlutils.cpp \
@@ -39,7 +44,32 @@ SOURCES += main.cpp \
     ../src/votingmanager.cpp \
     ../src/ninegagapiclient.cpp \
     ../src/ninegagapirequest.cpp \
-    ../src/sectionmodel.cpp
+    ../src/sectionmodel.cpp \
+    ../src/commentmodel.cpp \
+    ../src/commentobject.cpp \
+    ../src/commentmediaobject.cpp \
+    ../src/userobject.cpp \
+    ../src/networkaccessmanagerfactory.cpp
+
+DISTFILES += \
+    qml/AboutPage.qml \
+    qml/AppSettingsPage.qml \
+    qml/CommentDelegate.qml \
+    qml/CommentsAnswersPage.qml \
+    qml/CommentsPage.qml \
+    qml/Constant.qml \
+    qml/CoverPage.qml \
+    qml/GagDelegate.qml \
+    qml/ImagePage.qml \
+    qml/InfoBanner.qml \
+    qml/LoginDialog.qml \
+    qml/main.qml \
+    qml/MainPage.qml \
+    qml/OpenLinkDialog.qml \
+    qml/SectionPage.qml \
+    qml/SimpleListItem.qml \
+    qml/SortPage.qml \
+    qml/VideoComponent.qml
 
 OTHER_FILES += \
     rpm/$${TARGET}.spec \
@@ -48,20 +78,4 @@ OTHER_FILES += \
     $${TARGET}.desktop \
     $${TARGET}.png \
     ../README.md \
-    ../LICENSE \
-    qml/AboutPage.qml \
-    qml/AppSettingsPage.qml \
-    qml/CommentsPage.qml \
-    qml/Constant.qml \
-    qml/CoverPage.qml \
-    qml/GagDelegate.qml \
-    qml/ImagePage.qml \
-    qml/InfoBanner.qml \
-    qml/main.qml \
-    qml/MainPage.qml \
-    qml/OpenLinkDialog.qml \
-    qml/SectionPage.qml \
-    qml/SimpleListItem.qml \
-    qml/LoginDialog.qml \
-    qml/Images/icon-gif-play.png \
-    qml/VideoComponent.qml
+    ../LICENSE

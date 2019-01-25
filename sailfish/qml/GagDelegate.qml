@@ -338,7 +338,12 @@ Item {
             IconButton {
                 icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium
                 icon.source: newCommentsIconExists ? "image://theme/icon-m-outline-chat" : "image://theme/icon-m-message"
-                onClicked: pageStack.push(Qt.resolvedUrl("CommentsPage.qml"), { gagURL: model.url })
+                onClicked: {
+                    pageStack.push(Qt.resolvedUrl("CommentsPage.qml"), {
+                                              gagURL: model.url,
+                                              gagManager: gagbookManager
+                                          })
+                }
             }
             IconButton {
                 icon.height: Theme.iconSizeMedium; icon.width: Theme.iconSizeMedium

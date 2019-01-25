@@ -36,6 +36,7 @@
 #include "networkmanager.h"
 #include "gagobject.h"
 #include "gagmodel.h"
+#include "commentobject.h"
 
 class GagRequest : public QObject
 {
@@ -46,6 +47,8 @@ public:
 
     void initiateGagsRequest();
     void fetchGags(int groupId, QString &section, QString &lastId);
+    void fetchComments(const QVariantList &data, CommentObject *parentComment);
+    void abortCommentsRequest();
 
 signals:
     /*! Emit this if the network request succeeds on fetching the gags data and
@@ -64,6 +67,15 @@ signals:
     /*! Emit this if there are no further gags/posts available for the current
      *  section/groupId and therefore the end of the list has been reached. */
     void reachedEndOfList();
+
+    /*! Emit this if the network request succeeds on fetching the comments data and
+     *  the content has been parsed successful.
+     *  \p commentList Contains the parsed CommentObjects. */
+    void fetchCommentsSuccess(const QList<CommentObject *> &commentList);
+
+    /*! Emit this if the network request failed on fetching the comments data.
+     *  \p error Contains the reason of the failure. */
+    void fetchCommentsFailure(const QString &error);
 
 protected:
     /*! Get the global instance of NetworkManager. */
@@ -88,13 +100,28 @@ protected:
      *  \p response This is the content of the network reply. */
     virtual QList<GagObject> parseGags(const QByteArray &response) = 0;
 
+    /*! Implement this to initiate a network request to retrieve the comments data.
+     *  \p data Contains all the parameters that are needed for the implementing
+     *  class to retrieve the comments. */
+    virtual QNetworkReply *fetchCommentsImpl(const QVariantList &data) = 0;
+
+    /*! Implement this to parse the network response to a list of CommentObjects.
+     *  \p response This is the content of the network reply.
+     *  \p parentComment Specifies the CommentObject that is the parent for the
+     *   retrieved data. */
+    virtual QList<CommentObject *> parseComments(const QByteArray &response,
+                                                 CommentObject *parentComment) = 0;
+
 private slots:
     void onFetchGagsFinished();
+    void onFetchCommentsFinished(CommentObject *parentComment);
 
 private:
     NetworkManager *m_networkManager;
     QNetworkReply *m_gagsReply;
     QList<GagObject> m_gagList;
+
+    QNetworkReply *m_commentsReply;
 };
 
 #endif // GAGREQUEST_H

@@ -46,7 +46,8 @@
  * \param parent Parent QObject.
  */
 GagRequest::GagRequest(NetworkManager *networkManager, QObject *parent) :
-    QObject(parent), m_networkManager(networkManager), m_gagsReply(0)
+    QObject(parent), m_networkManager(networkManager), m_gagsReply(0),
+    m_commentsReply(0)
 {
 }
 
@@ -75,6 +76,44 @@ void GagRequest::fetchGags(int groupId, QString &section, QString &lastId)
     // make sure the QNetworkReply will be destroyed when this object is destroyed
     m_gagsReply->setParent(this);
     connect(m_gagsReply, SIGNAL(finished()), this, SLOT(onFetchGagsFinished()), Qt::UniqueConnection);
+}
+
+/*!
+ * \brief GagRequest::fetchComments Initiates the request to fetch comments.
+ * \param data A list of the required parameters to perform the comments request.
+ * \param parentComment The parent comment for that the comments should be fetched.
+ */
+void GagRequest::fetchComments(const QVariantList &data, CommentObject *parentComment)
+{
+    if (m_commentsReply != 0) {
+        qWarning() << "GagRequest::fetchComments(): A request is still active and will be aborted!";
+        m_commentsReply->abort();   // emits finished() signal!
+        m_commentsReply->deleteLater();
+        m_commentsReply = 0;
+    }
+
+    m_commentsReply = fetchCommentsImpl(data);
+    m_commentsReply->setParent(this);
+
+    // It is assured that the connection is a QUniqueConnection since a new reply is created everytime
+    connect(m_commentsReply, &QNetworkReply::finished,
+            [this, parentComment](){ this->onFetchCommentsFinished(parentComment); });
+}
+
+/*!
+ * \brief GagRequest::abortCommentsRequest Aborts all active comment requests, if there are any active,
+ *  and closes down any network connections.
+ *  Note: The finished() signal will be NOT emitted.
+ */
+void GagRequest::abortCommentsRequest()
+{
+    if (m_commentsReply != 0) {
+        // prevent emitting the 'finished()' signal since calling this method implies an intended action
+        m_commentsReply->disconnect();
+        m_commentsReply->abort();
+        m_commentsReply->deleteLater();
+        m_commentsReply = 0;
+    }
 }
 
 /*!
@@ -107,6 +146,35 @@ void GagRequest::onFetchGagsFinished()
     }
     else
         emit fetchGagsSuccess(m_gagList);
+}
+
+/*!
+ * \brief GagRequest::onFetchCommentsFinished Slot to process the QNetworkReply after fetching
+ *  the comments.
+ * \p parentComment The parent comment for that the comments has been fetched.
+ */
+void GagRequest::onFetchCommentsFinished(CommentObject *parentComment)
+{
+    if (m_commentsReply->error()) {
+        qDebug() << "QNetworkReply error on fetching comments: " << m_commentsReply->error()
+                 << "\nQNetworkReply object: " << m_commentsReply->readAll();
+        QString errorStr = m_commentsReply->errorString();
+        m_commentsReply->disconnect();
+        m_commentsReply->deleteLater();
+        m_commentsReply = 0;
+        emit fetchCommentsFailure(errorStr);
+        return;
+    }
+
+    QByteArray response = m_commentsReply->readAll();
+    m_commentsReply->disconnect();
+    m_commentsReply->deleteLater();
+    m_commentsReply = 0;
+
+    // TODO check for an empty list & parse errors!
+    const QList<CommentObject *> &commentList = parseComments(response, parentComment);
+
+    emit fetchCommentsSuccess(commentList);
 }
 
 /*!

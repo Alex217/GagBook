@@ -30,42 +30,31 @@ import QtQml.Models 2.2 // for DelegateModel QML type
 import Sailfish.Silica 1.0
 import harbour.gagbook.Core 1.0
 
+/*
+  This shows the second-level-comments (answers) on a seperate page.
+  The code is almost equal to 'CommentsPage.qml' with the difference that it is possible
+  to set a specific CommentModel with a given ModelIndex (and some other minor differences).
+
+  TODO Decide on the final implementation: Showing the answers on a seperate page or loading
+  them into the same ListView like in a TreeView.
+*/
 Page {
-    id: commentsPage
-
-    property GagBookManager gagManager: null
-    property url gagURL
-
-    property string sortingText: qsTr("Sorting:")
-    property string commentsCount: ""
+    property CommentModel commentModel
+    property var parentIndex
+    property string commentsCount
     property int modelStatus: commentModel.loadingStatus
 
-    function getSortingString() {
-        if (commentModel.sorting === CommentModel.Hot)
-            //: The 'Hot' sorting lists the best rated items at the top (e.g. comments with the most upvotes).
-            //% Synonyms: Popular, Favoured
-            return sortingText + " " + qsTr("Hot");
-        else
-            //: The 'Fresh' sorting lists the newest items (by the elapsed time) at the top.
-            //% Synonyms: New, Recent
-            return sortingText + " " + qsTr("Fresh");
-    }
-
-    function onSelectedSortingChanged(sortType) {
-        // see SortPage.qml for possible sortTypes
-        commentModel.sorting = sortType === "hot" ? CommentModel.Hot : CommentModel.Fresh
-    }
+    id: childCommentsPage
 
     SilicaListView {
         id: commentsListView
         anchors.fill: parent
         model: visualModel
         spacing: Theme.paddingMedium
-        //clip: false  // http://doc.qt.io/qt-5/qtquick-performance.html#clipping
 
         header: PageHeader {
-            id: pageHeader
-            title: qsTr("Comments")
+            id: header
+            title: qsTr("Answers")
             description: commentsCount
         }
 
@@ -119,25 +108,16 @@ Page {
             }
         }
 
-        PullDownMenu {
-            busy: modelStatus === CommentModel.Refreshing
-
-            MenuItem {
-                id: sortingMenuItem
-                text: getSortingString()
-                visible: !commentModel.isEmpty
-                onClicked: {
-                    pageStack.push(sortPage)
-                }
-            }
-            MenuItem {
-                //: Refetches the content via the network.
-                text: qsTr("Refresh")
-                onClicked: {
-                    commentModel.refresh()
-                }
-            }
-        }
+        // TODO First this requires the support by the CommentModel/NineGagApiClient
+//        PullDownMenu {
+//            MenuItem {
+//                //: Refetches the content via the network.
+//                text: qsTr("Refresh")
+//                onClicked: {
+//                    commentModel.refresh(visualModel.rootIndex)
+//                }
+//            }
+//        }
 
         PushUpMenu {
             visible: modelStatus === CommentModel.FetchMoreFailure
@@ -146,8 +126,8 @@ Page {
                 //: Try to load further items (via network) after there was on error on the initial execution.
                 text: qsTr("Retry loading")
                 onClicked: {
-                    if (commentModel.canFetchMore(commentsListView.model.rootIndex))
-                        commentModel.fetchMore(commentsListView.model.rootIndex)
+                    if (commentModel.canFetchMore(visualModel.rootIndex))
+                        commentModel.fetchMore(visualModel.rootIndex)
                 }
             }
         }
@@ -172,45 +152,13 @@ Page {
         VerticalScrollDecorator { }
     }
 
-    // Needed to display the hierarchical tree model in QML
     DelegateModel {
         id: visualModel
         model: commentModel
-        rootIndex: modelIndex(0)
+        rootIndex: modelIndex(parentIndex)
 
         delegate: CommentDelegate { }
     }
-
-    CommentModel {
-        id: commentModel
-        manager: gagManager
-        gagUrl: gagURL
-
-        onSortingChanged: {
-            sortingMenuItem.text = getSortingString()
-            commentModel.refresh()
-        }
-
-        onLoadingStatusChanged: {
-            // update commentsCount property
-            if ((status == CommentModel.Idle) && !commentModel.isEmpty)
-                commentsPage.commentsCount = commentModel.totalCommentCount()
-            else if (status == CommentModel.Refreshing)
-                commentsPage.commentsCount = ""
-        }
-
-        //onLoadingFailure: infoBanner.alert(errorMsg)
-    }
-
-    SortPage {
-        id: sortPage
-
-        onSelectedSortTypeChanged: onSelectedSortingChanged(sortType)
-    }
-
-//    InfoBanner {
-//        id: infoBanner
-//    }
 
     BusyIndicator {
         size: BusyIndicatorSize.Large
