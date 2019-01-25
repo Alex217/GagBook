@@ -13,7 +13,7 @@ Name:       harbour-gagbook
 %{!?qtc_make:%define qtc_make make}
 %{?qtc_builddir:%define _builddir %qtc_builddir}
 Summary:    An unofficial client for the 9GAG.com website
-Version:    1.3.3
+Version:    1.4.0
 Release:    1
 Group:      Amusements/Graphics
 License:    BSD
@@ -27,12 +27,11 @@ BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(Qt5Network)
-BuildRequires:  pkgconfig(qdeclarative5-boostable)
 BuildRequires:  pkgconfig(libresourceqt5)
 BuildRequires:  desktop-file-utils
 
 %description
-GagBook is an unofficial client for the 9GAG.com website that allows you to easily view 9GAG posts with a simple, smooth and native user interface.
+GagBook is an unofficial Sailfish OS app for the 9GAG.com website that allows you to easily browse the content with a simple, smooth and native user interface.
 
 
 %prep

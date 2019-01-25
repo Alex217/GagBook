@@ -1,6 +1,6 @@
 Name: harbour-gagbook
 Summary: An unofficial client for the 9GAG.com website
-Version: 1.3.3
+Version: 1.4.0
 Release: 1
 # The contents of the Group field should be one of the groups listed here:
 # https://gitorious.org/meego-developer-tools/spectacle/blobs/master/data/GROUPS?p=meego-developer-tools:spectacle.git;a=blob_plain;f=data/GROUPS;hb=HEAD
@@ -12,7 +12,7 @@ License: BSD
 Sources:
   - '%{name}-%{version}.tar.bz2'
 Description: |
-  GagBook is an unofficial client for the 9GAG.com website that allows you to easily view 9GAG posts with a simple, smooth and native user interface.
+  GagBook is an unofficial Sailfish OS app for the 9GAG.com website that allows you to easily browse the content with a simple, smooth and native user interface.
 Configure: none
 # The qtc5 builder inserts macros to allow QtCreator to have fine
 # control over qmake/make execution
@@ -29,7 +29,7 @@ PkgConfigBR:
   - Qt5Qml
   - Qt5Quick
   - Qt5Network
-  - qdeclarative5-boostable
+#  - qdeclarative5-boostable
   - libresourceqt5 # not officially supported yet!
 
 # Runtime dependencies which are not automatically detected
