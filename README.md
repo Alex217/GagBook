@@ -8,44 +8,32 @@
   <br>
 </h1>
 
-GagBook is an unofficial mobile app for the [9GAG](https://9gag.com) website, currently available
-for SailfishOS, MeeGo Harmattan and Symbian^3.
-
-This is a fork of the original GagBook app initially developed by [@dicksonleong](https://github.com/dicksonleong) and later maintained by [@llelectronics](https://github.com/llelectronics).
-I intend to update this fork with bug fixes and new features.
-
-GagBook gets its data from the undisclosed official 9GAG API.
-The webscraping method using QtWebKitWidgets is deprecated after 9GAG changed its website to a JS rendered page back in December 2017.
+GagBook is an unofficial Sailfish OS app for the [9GAG.com](https://9gag.com) website.
 
 ## Features
 
-- Simple, smooth and native UI
-- View posts in different sections, e.g. hot, trending, fresh, etc.
-- Full screen view of images with pinch-to-zoom
-- View comments for each post
-- Save images
-- Login (with email only) and voting
-- Share posts using Harmattan's integrated sharing
-- Video support (atm only SailfishOS supports MP4 files on 9GAG)
+- Simple, smooth and native Sailfish Silica UI
+- View posts in different sections, e.g. Hot, Trending, Fresh, etc.
+- Account login (with email only) and voting support
+- View comments of each post
+- Save image and video files
 
-## Limitation / Known Issues / To Do
+## Development
 
-- **GagBook may fail to work anytime when 9GAG updates their website** (if this happens, you will see "error: Unable to parse response")
-- Image upload is not supported
-- Large image will be stretched down due to hardware limitation
+This is a fork of the original GagBook app initially developed by [@dicksonleong](https://github.com/dicksonleong/GagBook) and later maintained by [@llelectronics](https://github.com/llelectronics/GagBook).
+
+Initially GagBook used webscraping using QtWebKitWidgets to get its data. I started to work on GagBook back in December 2017 after the app was not working anymore due to a changed website, that was JS rendered since then.
+Now GagBook gets its data from the undisclosed official 9GAG.com API.
+
+I will update GagBook to fix bugs and implement new features.
 
 ## Contacts
 
 - **Me**: Alex217@t-online.de
-- **llelectronics**: leszek.lesner@web.de
-- **dicksonleong**: dicksonleong8@gmail.com
 
 ## License
 
 GagBook is licensed under the Simplified BSD License, see the [LICENSE.md](LICENSE.md) file for more details.
-
-GagBook uses the [Qt-Json library](https://github.com/ereilin/qt-json), which is also licensed
-under the Simplified BSD License, see the file "qt-json/LICENSE" for more info.
 
 [VideoComponent.qml](sailfish/qml/VideoComponent.qml) was implemented by [@llelectronics](https://github.com/llelectronics) and is licensed under GPLv3.
 
