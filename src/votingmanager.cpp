@@ -33,6 +33,7 @@
 #include <QtNetwork/QNetworkReply>
 #include <QJsonParseError>
 #include <QJsonDocument>
+#include <QUrlQuery>
 #include <QDebug>
 
 #include "gagbookmanager.h"
@@ -73,7 +74,11 @@ void VotingManager::vote(const QString &id, VotingManager::VoteType voteType)
         emit busyChanged();
     }
 
-    QUrl voteUrl("https://9gag.com/vote/"+ enumToString(voteType).toLower() +"/id/" + id);
+    QUrl voteUrl("https://9gag.com/vote/"+ enumToString(voteType).toLower());
+    QUrlQuery query;
+    query.addQueryItem("id", id);
+    voteUrl.setQuery(query.query());
+
     m_reply = m_manager->networkManager()->createPostRequest(voteUrl, QByteArray());
     m_reply->setParent(this);
     connect(m_reply, SIGNAL(finished()), this, SLOT(onReplyFinished()));
@@ -85,6 +90,7 @@ void VotingManager::onReplyFinished()
 
         bool ok = false;
         QJsonParseError parseError;
+
         const QVariant variant = QJsonDocument::fromJson(m_reply->readAll(), &parseError).toVariant();
         const QVariantMap result = variant.toMap();
 
@@ -95,13 +101,12 @@ void VotingManager::onReplyFinished()
         Q_ASSERT_X(!result.isEmpty(), Q_FUNC_INFO, "Error parsing JSON or JSON is empty");
 
         const QString id = result.value("id").toString();
-        const int score = result.value("myScore").toInt();
-        const QString msg = result.value("msg").toString();
+        const int score = result.value("score").toInt();
 
-        if (msg.contains("loved", Qt::CaseInsensitive)) // if success, msg can be "Loved" or "Not loved"
+        if (id != QString("0"))
             emit voteSuccess(id, score);
          else
-            emit failure(msg);
+            emit failure("Voting failed!");
     } else {
         emit failure(m_reply->errorString());
     }
