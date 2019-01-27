@@ -5,6 +5,9 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+* Sun Jan 27 2019 Alexander Seibel <Alex217@t-online.de> 1.4.1-1
+- Fix the voting
+
 * Fri Jan 25 2019 Alexander Seibel <Alex217@t-online.de> 1.4.0-1
 - Implement full comments support
 - Update the sections
