@@ -5,6 +5,9 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+* Wed May 22 2019 Alexander Seibel <Alex217@t-online.de> 1.4.2-1
+- Fix the loading of posts
+
 * Sun Jan 27 2019 Alexander Seibel <Alex217@t-online.de> 1.4.1-1
 - Fix the voting
 
