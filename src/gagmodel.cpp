@@ -41,7 +41,7 @@
 GagModel::GagModel(QObject *parent) :
     QAbstractListModel(parent), m_groupId(1), m_section(QString()), m_lastId(QString()),
     m_selectedSection(0), m_busy(false), m_progress(0), m_manualProgress(0), m_manager(0),
-    m_imageDownloader(0), m_manualImageDownloader(0), m_downloadingIndex(-1)
+    m_gagList(QList<GagObject>()), m_imageDownloader(0), m_manualImageDownloader(0), m_downloadingIndex(-1)
 {
     _roles[TitleRole] = "title";
     _roles[IdRole] = "id";
@@ -248,7 +248,19 @@ void GagModel::refresh(RefreshType refreshType)
             m_gagList.clear();
             endRemoveRows();
         } else {
-            m_lastId = m_gagList.last().id();
+            m_lastId = "";
+
+            const int end = m_gagList.size();
+            const int start = end - 9;
+            QString id;
+
+            for (int i = start; i < end; i++) {
+                id = m_gagList.at(i).id();
+                m_lastId.append(id);
+
+                if (i < (end - 1))
+                    m_lastId.append(",");
+            }
         }
     }
 

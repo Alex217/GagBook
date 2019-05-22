@@ -67,7 +67,7 @@ const QByteArray TOPCOMMENTS_PATH = "/v1/topComments.json";
 // Defining App constants:
 const QByteArray APP_ID = "com.ninegag.android.app";
 const QByteArray DEVICE_TYPE = "android";
-const QByteArray BUCKET_NAME = "__DEFAULT__";   // "MAIN_RELEASE";
+const QByteArray BUCKET_NAME = "MAIN_RELEASE";   // "__DEFAULT__";
 const QByteArray COMMENT_ID_CDN = "a_dd8f2b7d304a10edaf6f29517ea0ca4100a43d1b";
 
 /*!
@@ -313,10 +313,10 @@ QNetworkReply *NineGagApiClient::getPosts(const int groupId, const QString &sect
         query.addQueryItem("type", "hot");
     }
 
-    query.addQueryItem("itemCount", "10");  // count of posts
+    query.addQueryItem("itemCount", "9");  // count of posts
     // ToDo: disabled album and video posts until support is added | "animated,photo,video,article"
     query.addQueryItem("entryTypes", "animated,photo");
-    query.addQueryItem("offset", "10");
+    //query.addQueryItem("offset", "10");
 
     if (!lastId.isEmpty()) {
         query.addQueryItem("olderThan", lastId);
