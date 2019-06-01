@@ -251,7 +251,7 @@ void GagModel::refresh(RefreshType refreshType)
             m_lastId = "";
 
             const int end = m_gagList.size();
-            const int start = end - 9;
+            const int start = (end < 9 ? 0 : end - 9);
             QString id;
 
             for (int i = start; i < end; i++) {
