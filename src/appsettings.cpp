@@ -30,6 +30,9 @@
 
 #include <QtCore/QSettings>
 
+// version of the stored section list, see readSettings()
+static const int SECTIONS_VERSION = 2;
+
 AppSettings::AppSettings(QObject *parent) :
     QObject(parent), m_settings(new QSettings(this)), m_sections(new SectionModel(this))
 {
@@ -52,13 +55,30 @@ void AppSettings::readSettings()
     m_scrollWithVolumeKeys = m_settings->value("scrollWithVolumeKeys", false).toBool();
     m_sections->restore(m_settings, "sections");
 
-    if (m_sections->isEmpty())
+    // 1.6.0 replaced the 2019 sections with 9GAG's interests
+    if (m_sections->isEmpty() || m_settings->value("sectionsVersion").toInt() < SECTIONS_VERSION) {
         m_sections->setDefaultSections();
+        saveSections();
+    }
+}
+
+void AppSettings::saveSections()
+{
+    m_settings->remove("sections");
+    m_sections->save(m_settings, "sections");
+    m_settings->setValue("sectionsVersion", SECTIONS_VERSION);
 }
 
 void AppSettings::setDefaultSettings()
 {
-    m_settings->clear();
+    // Reset everything except the API session kept by NineGagApiClient (device id, login).
+    // That group is written before AppSettings exists, so clear() would wipe the device id.
+    foreach (const QString &key, m_settings->childKeys())
+        m_settings->remove(key);
+    foreach (const QString &group, m_settings->childGroups()) {
+        if (group != QLatin1String("apiSession"))
+            m_settings->remove(group);
+    }
 
     m_settings->setValue("version", "0.2");
 
@@ -74,7 +94,7 @@ void AppSettings::setDefaultSettings()
     m_settings->setValue("scrollWithVolumeKeys", m_scrollWithVolumeKeys);
 
     m_sections->setDefaultSections();
-    m_sections->save(m_settings, "sections");
+    saveSections();
 
     m_settings->sync();
 }

@@ -61,17 +61,22 @@ void GagRequest::initiateGagsRequest()
 
 /*!
  * \brief GagRequest::fetchGags Initiates the request to fetch the gags.
- * \param groupId The id to select between the different sections/groups.
- * \param section Specifies the current section, e.g. 'hot'.
- * \param lastId The id of the last gag/post. If this is set, the retrieved
- *  gags are older than the last gag (pagination).
+ * \param feed The home feed, interest or tag to fetch.
+ * \param lastId The ids of the last posts, to get the next page of a home feed or interest.
+ * \param fromIndex The number of posts already loaded, to get the next page of a tag.
  */
-void GagRequest::fetchGags(int groupId, QString &section, QString &lastId)
+void GagRequest::fetchGags(const GagFeed &feed, const QString &lastId, int fromIndex)
 {
-    // TODO catch the corner case where the request is still active (if the finished slot has not been called yet)
-    Q_ASSERT(m_gagsReply == 0);
+    // a newer request replaces one that is still running (e.g. a refresh after logging in)
+    if (m_gagsReply != 0) {
+        qDebug() << "GagRequest::fetchGags(): Aborting the previous request.";
+        m_gagsReply->disconnect(this);
+        m_gagsReply->abort();
+        m_gagsReply->deleteLater();
+        m_gagsReply = 0;
+    }
 
-    m_gagsReply = fetchGagsImpl(groupId, section, lastId);
+    m_gagsReply = fetchGagsImpl(feed, lastId, fromIndex);
 
     // make sure the QNetworkReply will be destroyed when this object is destroyed
     m_gagsReply->setParent(this);
@@ -124,11 +129,14 @@ void GagRequest::onFetchGagsFinished()
     if (m_gagsReply->error()) {
         qDebug() << "QNetworkReply error: " << m_gagsReply->error()
                  << "\nQNetworkReply object: " << m_gagsReply->readAll();
-        QString errorStr = m_gagsReply->errorString();
-        m_gagsReply->disconnect();
-        m_gagsReply->deleteLater();
+        QNetworkReply *reply = m_gagsReply;
+        QString errorStr = reply->errorString();
+        reply->disconnect();
+        reply->deleteLater();
         m_gagsReply = 0;
-        emit fetchGagsFailure(errorStr);
+
+        if (!retryAfterGagsError(reply))
+            emit fetchGagsFailure(errorStr);
         return;
     }
 
@@ -175,6 +183,15 @@ void GagRequest::onFetchCommentsFinished(CommentObject *parentComment)
     const QList<CommentObject *> &commentList = parseComments(response, parentComment);
 
     emit fetchCommentsSuccess(commentList);
+}
+
+/*!
+ * \brief GagRequest::retryAfterGagsError Default implementation, does not retry.
+ */
+bool GagRequest::retryAfterGagsError(QNetworkReply *reply)
+{
+    Q_UNUSED(reply);
+    return false;
 }
 
 /*!

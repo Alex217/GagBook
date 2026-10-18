@@ -28,6 +28,10 @@
 #include "commentmodel.h"
 #include "gagrequest.h"
 #include "gagimagedownloader.h"
+#include "ninegagapirequest.h"
+
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonObject>
 
 /*!
     \class CommentModel
@@ -70,6 +74,7 @@ CommentModel::CommentModel(QObject *parent)
     m_roleNames[ChildCommentCountRole] = "childCommentCount";
     m_roleNames[IsOriginalPosterRole] = "isOriginalPoster";
     m_roleNames[UserRole] = "user";
+    m_roleNames[ThreadIdRole] = "threadId";
 }
 
 /*!
@@ -77,7 +82,8 @@ CommentModel::CommentModel(QObject *parent)
  */
 CommentModel::~CommentModel()
 {
-    m_manager->gagRequest()->abortCommentsRequest();
+    if (m_manager != 0 && isLoading())
+        m_manager->gagRequest()->abortCommentsRequest();
     delete m_rootComment;
 }
 
@@ -189,6 +195,11 @@ QVariant CommentModel::data(const QModelIndex &index, int role) const
             }}
         case UserRole:
             return QVariant::fromValue(comment->user());
+        case ThreadIdRole: {
+            // replies are always added to the thread's top-level comment
+            CommentObject *parent = comment->parentComment();
+            return (parent == 0 || parent->isRootComment()) ? comment->id() : parent->id();
+        }
         default:
             //qWarning() << "CommentModel::data(): Trying to retrieve data with the invalid role " << role << "!";
             return QVariant();
@@ -359,6 +370,160 @@ void CommentModel::refresh(const QModelIndex &parent)
 void CommentModel::downloadMedia(const QModelIndex &index)
 {
     Q_UNUSED(index);
+}
+
+// the index of the comment \p id among the loaded top-level comments and their replies
+QModelIndex CommentModel::indexForId(const QString &id) const
+{
+    if (id.isEmpty())
+        return QModelIndex();
+
+    for (int i = 0; i < m_rootComment->currentChildCount(); ++i) {
+        CommentObject *topLevel = m_rootComment->child(i);
+        if (topLevel->id() == id)
+            return createIndex(i, 0, topLevel);
+
+        for (int j = 0; j < topLevel->currentChildCount(); ++j) {
+            CommentObject *reply = topLevel->child(j);
+            if (reply->id() == id)
+                return createIndex(j, 0, reply);
+        }
+    }
+    return QModelIndex();
+}
+
+bool CommentModel::isLoading() const
+{
+    return m_loadingStatus == LoadingStatus::RefreshRequested || m_loadingStatus == LoadingStatus::Refreshing
+            || m_loadingStatus == LoadingStatus::FetchMoreProcessing;
+}
+
+bool CommentModel::addPostedComment(const QString &parentId, const QVariantMap &comment)
+{
+    if (comment.value(QStringLiteral("commentId")).toString().isEmpty())
+        return false;
+
+    if (isLoading()) {
+        PendingChange change;
+        change.parentId = parentId;
+        change.comment = comment;
+        m_pendingChanges.append(change);
+        return true;
+    }
+    return applyPostedComment(parentId, comment);
+}
+
+bool CommentModel::applyPostedComment(const QString &parentId, const QVariantMap &comment)
+{
+    const QString id = comment.value(QStringLiteral("commentId")).toString();
+    if (indexForId(id).isValid())
+        return true;    // a reload brought it already
+
+    const QJsonArray json = QJsonArray() << QJsonObject::fromVariantMap(comment);
+
+    if (parentId.isEmpty()) {
+        QList<CommentObject *> parsed = NineGagApiRequest::parseChildComments(json, m_rootComment);
+        if (parsed.isEmpty())
+            return false;
+        qDeleteAll(parsed.mid(1));
+        insertComment(0, QModelIndex(), parsed.first());
+        setTotalCommentCount(totalCommentCount() + 1);
+        updateIsEmpty();
+        emit countsChanged();
+        return true;
+    }
+
+    const QModelIndex parent = indexForId(parentId);
+    if (!parent.isValid())
+        return false;
+    CommentObject *thread = commentForIndex(parent);
+
+    // appended only when nothing is left to load: further replies load after the last one
+    const bool allLoaded = thread->currentChildCount() >= thread->totalChildCount();
+    thread->setTotalChildCount(thread->totalChildCount() + 1);
+    setTotalCommentCount(totalCommentCount() + 1);
+    if (allLoaded) {
+        QList<CommentObject *> parsed = NineGagApiRequest::parseChildComments(json, thread);
+        if (!parsed.isEmpty()) {
+            qDeleteAll(parsed.mid(1));
+            appendComment(parent, parsed.first());
+        }
+    }
+    emit dataChanged(parent, parent, QVector<int>() << ChildCommentCountRole);
+    emit countsChanged();
+    return true;
+}
+
+void CommentModel::replyAdded(const QString &parentId)
+{
+    const QModelIndex parent = indexForId(parentId);
+    CommentObject *parentComment = parent.isValid() ? commentForIndex(parent) : 0;
+
+    // the thread's replies aren't loaded (or it isn't in the list any more): reload the list,
+    // which brings the thread with its first replies
+    if (parentComment == 0 || parentComment->currentChildCount() == 0) {
+        refresh();
+        return;
+    }
+
+    // the new reply is the last of the thread: count it and load it after the loaded ones
+    parentComment->setTotalChildCount(parentComment->totalChildCount() + 1);
+    setTotalCommentCount(totalCommentCount() + 1);
+    emit dataChanged(parent, parent, QVector<int>() << ChildCommentCountRole);
+    emit countsChanged();
+    if (canFetchMore(parent))
+        fetchMore(parent);
+}
+
+bool CommentModel::removeCommentById(const QString &commentId)
+{
+    if (isLoading()) {
+        PendingChange change;
+        change.removedId = commentId;
+        m_pendingChanges.append(change);
+        return indexForId(commentId).isValid();
+    }
+    return applyRemoval(commentId);
+}
+
+bool CommentModel::applyRemoval(const QString &commentId)
+{
+    const QModelIndex index = indexForId(commentId);
+    if (!index.isValid())
+        return false;
+
+    const QModelIndex parent = index.parent();
+    CommentObject *parentComment = commentForIndex(parent);
+    removeComment(index);
+
+    // the post's total counts replies too
+    setTotalCommentCount(qMax(0, totalCommentCount() - 1));
+    if (parentComment == m_rootComment) {
+        updateIsEmpty();
+    } else {
+        parentComment->setTotalChildCount(qMax(0, parentComment->totalChildCount() - 1));
+        emit dataChanged(parent, parent, QVector<int>() << ChildCommentCountRole);
+    }
+    emit countsChanged();
+    return true;
+}
+
+void CommentModel::applyPendingChanges()
+{
+    const QList<PendingChange> changes = m_pendingChanges;
+    m_pendingChanges.clear();
+    foreach (const PendingChange &change, changes) {
+        if (!change.removedId.isEmpty())
+            applyRemoval(change.removedId);
+        else
+            applyPostedComment(change.parentId, change.comment);
+    }
+}
+
+int CommentModel::replyCount(const QString &commentId) const
+{
+    const QModelIndex index = indexForId(commentId);
+    return index.isValid() ? commentForIndex(index)->totalChildCount() : -1;
 }
 
 bool CommentModel::canFetchMore(const QModelIndex &parent) const
@@ -630,6 +795,7 @@ void CommentModel::onFetchMoreFinished(const QList<CommentObject *> &commentList
     if (commentList.isEmpty()) {
         updateIsEmpty();
         setLoadingStatus(LoadingStatus::Idle);
+        applyPendingChanges();
         return;
     }
 
@@ -646,6 +812,7 @@ void CommentModel::onFetchMoreFinished(const QList<CommentObject *> &commentList
         updateIsEmpty();
 
     setLoadingStatus(LoadingStatus::Idle);
+    applyPendingChanges();
 }
 
 void CommentModel::onFetchMoreFailure(const QString &errorString)
@@ -662,5 +829,6 @@ void CommentModel::onFetchMoreFailure(const QString &errorString)
             break;
     }
 
+    applyPendingChanges();
     emit loadingFailure(errorString);
 }

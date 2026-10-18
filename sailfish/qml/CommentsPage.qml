@@ -58,7 +58,8 @@ Page {
 
     SilicaListView {
         id: commentsListView
-        anchors.fill: parent
+        anchors { top: parent.top; left: parent.left; right: parent.right; bottom: commentBox.top }
+        clip: true
         model: visualModel
         spacing: Theme.paddingMedium
         //clip: false  // http://doc.qt.io/qt-5/qtquick-performance.html#clipping
@@ -172,6 +173,40 @@ Page {
         VerticalScrollDecorator { }
     }
 
+    CommentBox {
+        id: commentBox
+        anchors.bottom: parent.bottom
+        postUrl: commentsPage.gagURL.toString()
+        maxTextHeight: commentsPage.height / 4
+    }
+
+    // This page stays under the answers page, so it also handles what is posted or
+    // deleted there, even after that page was closed.
+    Connections {
+        target: gagbookManager
+        onCommentAdded: {
+            if (postUrl !== commentBox.postUrl)
+                return;
+            if (commentModel.addPostedComment(parentId, comment)) {
+                if (parentId.length === 0)
+                    commentsListView.positionViewAtBeginning();
+            } else if (parentId.length > 0) {
+                // 9GAG didn't send the comment back: load it
+                commentModel.replyAdded(parentId);
+            } else if (commentModel.sorting !== CommentModel.Fresh) {
+                // newest first, so the new comment is at the top (changing it reloads)
+                sortPage.currentlySelectedIndex = 1;
+                commentModel.sorting = CommentModel.Fresh;
+            } else {
+                commentModel.refresh();
+            }
+        }
+        onCommentDeleted: {
+            if (postUrl === commentBox.postUrl)
+                commentModel.removeCommentById(commentId);
+        }
+    }
+
     // Needed to display the hierarchical tree model in QML
     DelegateModel {
         id: visualModel
@@ -190,6 +225,8 @@ Page {
             sortingMenuItem.text = getSortingString()
             commentModel.refresh()
         }
+
+        onCountsChanged: commentsPage.commentsCount = commentModel.totalCommentCount()
 
         onLoadingStatusChanged: {
             // update commentsCount property

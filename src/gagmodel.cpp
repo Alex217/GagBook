@@ -30,6 +30,7 @@
 
 #include <QtCore/QUrl>
 #include <QtCore/QSize>
+#include <QtCore/QSet>
 
 #include "gagbookmanager.h"
 #include "appsettings.h"
@@ -39,7 +40,7 @@
 #include "sectionmodel.h"
 
 GagModel::GagModel(QObject *parent) :
-    QAbstractListModel(parent), m_groupId(1), m_section(QString()), m_lastId(QString()),
+    QAbstractListModel(parent), m_lastId(QString()), m_fromIndex(0),
     m_selectedSection(0), m_busy(false), m_progress(0), m_manualProgress(0), m_manager(0),
     m_gagList(QList<GagObject>()), m_imageDownloader(0), m_manualImageDownloader(0), m_downloadingIndex(-1)
 {
@@ -68,6 +69,66 @@ void GagModel::classBegin()
 
 void GagModel::componentComplete()
 {
+    if (m_manager != 0 && m_manager->settings() != 0) {
+        // keep the selection when the section list is replaced with 9GAG's current one
+        connect(m_manager->settings()->sections(), &QAbstractItemModel::modelReset,
+                this, &GagModel::onSectionsReset, Qt::UniqueConnection);
+    }
+
+    refresh(RefreshAll);
+}
+
+GagFeed GagModel::sectionFeed(int row) const
+{
+    SectionModel *sections = m_manager->settings()->sections();
+    const QModelIndex index = sections->index(row, 0, QModelIndex());
+    const QString kind = sections->data(index, SectionModel::KindRole).toString();
+    const QString key = sections->data(index, SectionModel::UrlPathRole).toString();
+
+    if (kind == QLatin1String("interest"))
+        return GagFeed(GagFeed::Interest, key);
+    return GagFeed(GagFeed::Home, key.isEmpty() ? QStringLiteral("hot") : key);
+}
+
+void GagModel::onSectionsReset()
+{
+    SectionModel *sections = m_manager->settings()->sections();
+    int row = sections->indexOf(m_selectedKind, m_selectedKey);
+    if (row < 0)
+        row = 0;
+
+    if (row != m_selectedSection) {
+        m_selectedSection = row;
+        emit selectedSectionChanged();
+    }
+    emit feedChanged();
+}
+
+QString GagModel::tag() const
+{
+    return m_tag;
+}
+
+QString GagModel::feedTitle() const
+{
+    if (!m_tag.isEmpty())
+        return QStringLiteral("#") + m_tag;
+    if (m_manager == 0 || m_manager->settings() == 0)
+        return QString();
+
+    SectionModel *sections = m_manager->settings()->sections();
+    return sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
+                          SectionModel::NameRole).toString();
+}
+
+void GagModel::showTag(const QString &tag)
+{
+    const QString trimmed = tag.trimmed();
+    if (trimmed.isEmpty())
+        return;
+
+    m_tag = trimmed;
+    emit feedChanged();
     refresh(RefreshAll);
 }
 
@@ -198,9 +259,15 @@ int GagModel::selectedSection() const
 
 void GagModel::setSelectedSection(int selectedSection)
 {
+    const bool tagShown = !m_tag.isEmpty();
+    m_tag.clear();      // choosing a section leaves the tag
+
     if (m_selectedSection != selectedSection) {
         m_selectedSection = selectedSection;
         emit selectedSectionChanged();
+        emit feedChanged();
+    } else if (tagShown) {
+        emit feedChanged();
     }
 }
 
@@ -229,18 +296,31 @@ void GagModel::refresh(RefreshType refreshType)
 
     if (refreshType == RefreshAll) {
 
-        SectionModel *sections = m_manager->settings()->sections();
-        m_groupId = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
-                                           SectionModel::SectionRoles::GroupIdRole).toInt();
+        if (!m_tag.isEmpty()) {
+            m_feed = GagFeed(GagFeed::Tag, m_tag);
+        } else {
+            m_feed = sectionFeed(m_selectedSection);
 
-        m_section = sections->data(sections->index(m_selectedSection, 0, QModelIndex()),
-                                               SectionModel::SectionRoles::UrlPathRole).toString();
+            SectionModel *sections = m_manager->settings()->sections();
+            const QModelIndex index = sections->index(m_selectedSection, 0, QModelIndex());
+            m_selectedKind = sections->data(index, SectionModel::KindRole).toString();
+            m_selectedKey = sections->data(index, SectionModel::UrlPathRole).toString();
+        }
 
         m_lastId = QString();
+        m_fromIndex = 0;
 
         connect(m_manager->gagRequest(), SIGNAL(readyToRequestGags()), this, SLOT(startRequest()),
                 Qt::UniqueConnection);
     }
+
+    // Connect the results before the request starts: getting a session can already fail,
+    // and that failure has to stop the busy state too.
+    GagRequest *gagReq = m_manager->gagRequest();
+    connect(gagReq, SIGNAL(fetchGagsSuccess(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)),
+            Qt::UniqueConnection);
+    connect(gagReq, SIGNAL(fetchGagsFailure(QString)), this, SLOT(onFailure(QString)), Qt::UniqueConnection);
+    connect(gagReq, &GagRequest::reachedEndOfList, this, &GagModel::onEndOfList, Qt::UniqueConnection);
 
     if (!m_gagList.isEmpty()) {
         if (refreshType == RefreshAll) {
@@ -248,10 +328,15 @@ void GagModel::refresh(RefreshType refreshType)
             m_gagList.clear();
             endRemoveRows();
         } else {
+            // tags page by position, the others by the ids of the last posts
+            m_fromIndex = m_gagList.count();
+
             m_lastId = "";
 
+            // Home feeds take the ids of the last 9 posts (since 1.4.2). Interests were
+            // checked (Oct 2026) with the id of the last post only, so send just that.
             const int end = m_gagList.size();
-            const int start = (end < 9 ? 0 : end - 9);
+            const int start = (m_feed.kind == GagFeed::Interest) ? end - 1 : (end < 9 ? 0 : end - 9);
             QString id;
 
             for (int i = start; i < end; i++) {
@@ -330,14 +415,7 @@ void GagModel::changeLikes(const QString &id, int likes)
 
 void GagModel::startRequest()
 {
-    GagRequest *gagReq = m_manager->gagRequest();
-
-    connect(gagReq, SIGNAL(fetchGagsSuccess(QList<GagObject>)), this, SLOT(onSuccess(QList<GagObject>)),
-            Qt::UniqueConnection);
-    connect(gagReq, SIGNAL(fetchGagsFailure(QString)), this, SLOT(onFailure(QString)), Qt::UniqueConnection);
-    connect(gagReq, &GagRequest::reachedEndOfList, this, &GagModel::onEndOfList, Qt::UniqueConnection);
-
-    gagReq->fetchGags(m_groupId, m_section, m_lastId);
+    m_manager->gagRequest()->fetchGags(m_feed, m_lastId, m_fromIndex);
 }
 
 void GagModel::onEndOfList()
@@ -352,8 +430,26 @@ void GagModel::onEndOfList()
 
 void GagModel::onSuccess(const QList<GagObject> &gagList)
 {
+    // a next page can repeat posts (e.g. tag search while new posts arrive), skip those
+    QSet<QString> shownIds;
+    foreach (const GagObject &gag, m_gagList)
+        shownIds.insert(gag.id());
+
+    QList<GagObject> newGags;
+    foreach (const GagObject &gag, gagList) {
+        if (!shownIds.contains(gag.id())) {
+            shownIds.insert(gag.id());
+            newGags.append(gag);
+        }
+    }
+
+    if (newGags.isEmpty()) {
+        onEndOfList();
+        return;
+    }
+
     m_imageDownloader = new GagImageDownloader(manager()->networkManager(), this);
-    m_imageDownloader->setGagList(gagList);
+    m_imageDownloader->setGagList(newGags);
     m_imageDownloader->setDownloadGIF(false);
     connect(m_imageDownloader, SIGNAL(downloadProgress(qint64,qint64)), this,
             SLOT(onDownloadProgress(qint64,qint64)), Qt::UniqueConnection);

@@ -30,18 +30,22 @@
 #define GAGBOOKMANAGER_H
 
 #include <QtCore/QObject>
+#include <QtCore/QVariantList>
+#include <QtCore/QVariantMap>
 
 #include "gagrequest.h"
 
 class NetworkManager;
+class NineGagApiClient;
 class AppSettings;
 class QNetworkReply;
+class QTimer;
 
 /*! Handle login and hold other global instance class
 
     A single global instance class that hold and expose other global instance
-    classes (AppSettings and NetworkManager) so they can be easily accessible
-    by other classes that need them. Also handle 9GAG account login.
+    classes (AppSettings, NetworkManager and NineGagApiClient) so they can be easily
+    accessible by other classes that need them. Also handle 9GAG account login.
  */
 class GagBookManager : public QObject
 {
@@ -58,11 +62,30 @@ class GagBookManager : public QObject
         can not be change afterward. */
     Q_PROPERTY(AppSettings *settings READ settings WRITE setSettings)
 
+    /*! The 9GAG user name of the logged in user, empty if not logged in. */
+    Q_PROPERTY(QString userName READ userName NOTIFY userNameChanged)
+
+    /*! Ids of the logged in user, to recognise own comments. */
+    Q_PROPERTY(QString userId READ userId NOTIFY userNameChanged)
+    Q_PROPERTY(QString accountId READ accountId NOTIFY userNameChanged)
+
+    /*! True if comments can be written (logged in, with the comment key from the login or a
+        stored login that can get one). */
+    Q_PROPERTY(bool canComment READ canComment NOTIFY userNameChanged)
+
+    /*! True while comment requests are being sent or wait to be sent. */
+    Q_PROPERTY(bool commentBusy READ isCommentBusy NOTIFY commentBusyChanged)
+
 public:
     explicit GagBookManager(QObject *parent = 0);
 
     bool isBusy() const;
     QString downloadCounter() const;
+    QString userName() const;
+    QString userId() const;
+    QString accountId() const;
+    bool canComment() const;
+    bool isCommentBusy() const;
 
     /*! Get the global instance of AppSettings. */
     AppSettings *settings() const;
@@ -71,21 +94,56 @@ public:
     /*! Get the global instance of NetworkManager. */
     NetworkManager *networkManager() const;
 
-    /*! Login to 9GAG account. If login success, loginSuccess() will emit, otherwise
-        loginFailure() will emit. */
-    Q_INVOKABLE void login(const QString &username, const QString &password);
+    /*! Get the global instance of NineGagApiClient. */
+    NineGagApiClient *apiClient() const;
+
+    /*! Login to 9GAG account with an email address (or user name) and password. If
+        \p rememberLogin is true, the session is renewed automatically when it expires.
+        If login success, loginSuccess() will emit, otherwise loginFailure() will emit. */
+    Q_INVOKABLE void login(const QString &username, const QString &password, bool rememberLogin = false);
 
     /*! Logout from 9GAG account. */
     Q_INVOKABLE void logout();
 
     GagRequest *gagRequest();
 
+    /*! Replace the interests in the section list with the ones 9GAG lists right now.
+        Runs once per app session; emits sectionsUpdated() if the list changed. */
+    Q_INVOKABLE void updateSections();
+
+    /*! Ask 9GAG for tags matching \p text. Answers with tagSuggestions(); a newer call
+        replaces an unanswered one. */
+    Q_INVOKABLE void suggestTags(const QString &text);
+
+    /*! Post \p text as a comment on the post \p postUrl, as a reply to \p parentId if not
+        empty. Requests are sent one after another. Returns the request's id, which
+        commentAdded() or commentFailure() carry, or 0 if it can't be sent (commentFailure()
+        has been emitted already, with id 0). */
+    Q_INVOKABLE int addComment(const QString &postUrl, const QString &text, const QString &parentId);
+
+    /*! Delete the own comment \p commentId. Like addComment(), answers with commentDeleted()
+        or commentFailure(). */
+    Q_INVOKABLE int deleteComment(const QString &postUrl, const QString &commentId);
+
+    /*! True if a comment author with these ids is the logged in user. */
+    Q_INVOKABLE bool isOwnUser(const QString &userId, const QString &accountId) const;
+
 private:
     void initGagRequest();
+    void setBusy(bool busy);
+    void syncLoginState();
+    void sendPendingRequests();
+    void sendSectionsRequest();
+    void sendSuggestRequest();
+    int queueCommentRequest(bool isDelete, const QString &postUrl, const QString &text,
+                            const QString &id);
+    void sendNextCommentRequest();
+    void failCommentRequests(const QString &message);
 
 signals:
     void busyChanged();
     void downloadCounterChanged();
+    void userNameChanged();
 
     /*! Emit when login is succeeded. */
     void loginSuccess();
@@ -94,15 +152,65 @@ signals:
         failure and should show to user. */
     void loginFailure(const QString &errorMessage);
 
+    /*! Emit when the login ended without the user logging out (e.g. it expired).
+        \p message should show to user. */
+    void sessionExpired(const QString &message);
+
+    /*! Emit when the section list was replaced with 9GAG's current interests. */
+    void sectionsUpdated();
+
+    /*! Answer to suggestTags(). \p tags is a list of {"name": ..., "count": ...}, empty if
+        9GAG couldn't be asked. */
+    void tagSuggestions(const QString &text, const QVariantList &tags);
+
+    void commentBusyChanged();
+    /*! Emit when a comment was posted on \p postUrl, as a reply to \p parentId if not empty.
+        \p comment is the comment as the comment service returned it, completed with the
+        user's name, the time and the text if it left them out; empty if it sent none. */
+    void commentAdded(const QString &postUrl, const QString &parentId, const QVariantMap &comment, int requestId);
+    /*! Emit when the comment \p commentId was deleted. */
+    void commentDeleted(const QString &postUrl, const QString &commentId, int requestId);
+    /*! Emit when posting or deleting a comment failed; \p message should show to user. */
+    void commentFailure(const QString &message, int requestId);
+
 private slots:
-    void onLoginFinished();
+    void onUserLoginFinished(bool success, const QString &errorMessage);
+    void onUserSessionEnded(const QString &message);
+    void onSessionReady();
+    void onSessionFailed();
+    void onSectionsReplyFinished();
+    void onSuggestReplyFinished();
+    void onCommentReplyFinished();
+    void onCommentTimeout();
 
 private:
     bool m_isBusy;
     AppSettings *m_settings;
     NetworkManager *m_netManager;
-    QNetworkReply *m_loginReply;
+    NineGagApiClient *m_apiClient;
     GagRequest *m_gagRequest;
+
+    bool m_sectionsWanted;      // updateSections() waits for a session
+    bool m_sectionsUpdated;     // done for this app session
+    QNetworkReply *m_sectionsReply;
+    QString m_suggestText;      // text of the suggestTags() call waiting for a session
+    bool m_suggestWanted;
+    QNetworkReply *m_suggestReply;
+    QNetworkReply *m_commentReply;
+
+    struct CommentRequest {
+        int id;
+        bool isDelete;
+        QString postUrl;
+        QString text;       // comment text
+        QString targetId;   // the parent (reply) or the comment to delete
+    };
+    QList<CommentRequest> m_commentQueue;
+    CommentRequest m_currentComment;
+    QTimer *m_commentTimer;     // Qt 5.6 has no transfer timeout
+    int m_lastCommentRequestId;
+    bool m_commentRenewing;     // renewing the login for a comment key
+    bool m_commentRenewed;      // ... done once for the queued requests
 };
 
 #endif // GAGBOOKMANAGER_H

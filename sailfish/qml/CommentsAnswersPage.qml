@@ -42,13 +42,18 @@ Page {
     property CommentModel commentModel
     property var parentIndex
     property string commentsCount
+    // the post and the comment whose answers these are
+    property string postUrl
+    property string parentId
+    property string parentName
     property int modelStatus: commentModel.loadingStatus
 
     id: childCommentsPage
 
     SilicaListView {
         id: commentsListView
-        anchors.fill: parent
+        anchors { top: parent.top; left: parent.left; right: parent.right; bottom: commentBox.top }
+        clip: true
         model: visualModel
         spacing: Theme.paddingMedium
 
@@ -150,6 +155,41 @@ Page {
         }
 
         VerticalScrollDecorator { }
+    }
+
+    // every comment here is a reply to the thread's first comment
+    CommentBox {
+        id: commentBox
+        anchors.bottom: parent.bottom
+        postUrl: childCommentsPage.postUrl
+        parentId: childCommentsPage.parentId
+        replyToName: childCommentsPage.parentName
+        canStopReplying: false
+        maxTextHeight: childCommentsPage.height / 4
+    }
+
+    // the comments page puts new replies into the model (it handles them even when this
+    // page is closed); show the new one, and keep the count up to date
+    Connections {
+        target: gagbookManager
+        onCommentAdded: {
+            if (postUrl === childCommentsPage.postUrl && parentId === childCommentsPage.parentId)
+                commentsListView.positionViewAtEnd();
+        }
+    }
+
+    Connections {
+        target: commentModel
+        onCountsChanged: {
+            var count = commentModel.replyCount(childCommentsPage.parentId);
+            if (count >= 0)
+                childCommentsPage.commentsCount = count;
+        }
+        // a reload drops the thread this page shows
+        onModelReset: {
+            if (childCommentsPage.status === PageStatus.Active)
+                pageStack.pop();
+        }
     }
 
     DelegateModel {

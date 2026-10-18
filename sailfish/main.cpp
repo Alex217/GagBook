@@ -34,6 +34,10 @@
 
 #include <QGuiApplication>
 #include <QQuickView>
+// Sailfish OS 5 no longer pulls these in through sailfishapp.h
+#include <QQmlContext>
+#include <QQmlEngine>
+#include <QtQml>
 
 #include "../src/gagbookmanager.h"
 #include "../src/gagmodel.h"
@@ -45,6 +49,7 @@
 #include "../src/sectionmodel.h"
 #include "../src/commentmodel.h"
 #include "../src/commentmediaobject.h"
+#include "../src/postuploader.h"
 #include "../src/networkaccessmanagerfactory.h"
 
 Q_DECL_EXPORT int main(int argc, char *argv[])
@@ -86,6 +91,7 @@ Q_DECL_EXPORT int main(int argc, char *argv[])
                                              "SectionModel should not be created in QML!");
     qRegisterMetaType<SectionModel*>("SectionModel*");
     qmlRegisterType<CommentModel>("harbour.gagbook.Core", 1, 0, "CommentModel");
+    qmlRegisterType<PostUploader>("harbour.gagbook.Core", 1, 0, "PostUploader");
     qmlRegisterUncreatableType<CommentMediaObject>("harbour.gagbook.Core", 1, 0, "CommentMediaObject",
                                              "CommentMediaObject should not be created in QML!");   // to register the ENUMs
 

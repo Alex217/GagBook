@@ -40,27 +40,33 @@ class NineGagApiRequest : public GagRequest
     Q_OBJECT
 
 public:
-    explicit NineGagApiRequest(NetworkManager *networkManager, QObject *parent = 0);
-    ~NineGagApiRequest();
+    /*! \p apiClient is owned by the caller and must outlive this object. */
+    NineGagApiRequest(NetworkManager *networkManager, NineGagApiClient *apiClient, QObject *parent = 0);
+
+    /*! Comment objects for the comments in \p jsonCommentsArray (in the comment service's
+        format), children of \p parentComment; their replies are parsed too. */
+    static QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
+                                                     CommentObject *parentComment);
 
 protected:
     void startGagsRequest();
-    QNetworkReply *fetchGagsImpl(const int groupId, const QString &section, const QString &lastId);
+    QNetworkReply *fetchGagsImpl(const GagFeed &feed, const QString &lastId, int fromIndex);
     QList<GagObject> parseGags(const QByteArray &response);
+    bool retryAfterGagsError(QNetworkReply *reply);
     QNetworkReply *fetchCommentsImpl(const QVariantList &data);
     QList<CommentObject *> parseComments(const QByteArray &response, CommentObject *parentComment);
 
 private slots:
-    void onLogin();
+    void onSessionReady();
+    void onSessionFailed(const QString &errorMessage);
 
 private:
     NineGagApiClient *m_apiClient;
-    bool m_loginOngoing;
+    bool m_waitingForSession;
+    bool m_retriedAfterAuthError;
 
-    QList<CommentObject *> parseChildComments(const QJsonArray &jsonCommentsArray,
-                                              CommentObject *parentComment);
-    CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
-    UserObject parseUser(const QJsonObject &jsonUser);
+    static CommentMediaObject parseCommentMedia(const QJsonObject &jsonMedia, ContentType mediaType);
+    static UserObject parseUser(const QJsonObject &jsonUser);
 };
 
 #endif // NINEGAGAPIREQUEST_H
